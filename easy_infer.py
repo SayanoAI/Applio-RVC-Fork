@@ -35,7 +35,7 @@ from lib.infer_pack.models import (
     SynthesizerTrnMs768NSFsid_nono,
 )
 from MDXNet import MDXNetDereverb
-from config import Config
+from configs.config import Config
 from infer_uvr5 import _audio_pre_, _audio_pre_new
 from huggingface_hub import HfApi, list_models
 from huggingface_hub import login
