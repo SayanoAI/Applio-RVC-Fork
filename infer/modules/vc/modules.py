@@ -9,7 +9,7 @@ import numpy as np
 import soundfile as sf
 import torch
 from io import BytesIO
-from my_utils import load_audio
+from infer.lib.audio import load_audio
 from infer.lib.audio import wav2
 from infer.lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,

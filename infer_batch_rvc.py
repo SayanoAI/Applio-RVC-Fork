@@ -41,9 +41,9 @@ class Config:
                         strr = f.read().replace("true", "false")
                     with open(f"configs/{config_file}", "w") as f:
                         f.write(strr)
-                with open("trainset_preprocess_pipeline_print.py", "r") as f:
+                with open("infer/modules/train/preprocess.py", "r") as f:
                     strr = f.read().replace("3.7", "3.0")
-                with open("trainset_preprocess_pipeline_print.py", "w") as f:
+                with open("infer/modules/train/preprocess.py", "w") as f:
                     f.write(strr)
             else:
                 self.gpu_name = None
@@ -55,9 +55,9 @@ class Config:
                 + 0.4
             )
             if self.gpu_mem <= 4:
-                with open("trainset_preprocess_pipeline_print.py", "r") as f:
+                with open("infer/modules/train/preprocess.py", "r") as f:
                     strr = f.read().replace("3.7", "3.0")
-                with open("trainset_preprocess_pipeline_print.py", "w") as f:
+                with open("infer/modules/train/preprocess.py", "w") as f:
                     f.write(strr)
         elif torch.backends.mps.is_available():
             print("没有发现支持的N卡, 使用MPS进行推理")
@@ -116,7 +116,7 @@ from lib.infer_pack.models import (
     SynthesizerTrnMs768NSFsid,
     SynthesizerTrnMs768NSFsid_nono,
 )
-from my_utils import load_audio
+from infer.lib.audio import load_audio
 from fairseq import checkpoint_utils
 from scipy.io import wavfile
 

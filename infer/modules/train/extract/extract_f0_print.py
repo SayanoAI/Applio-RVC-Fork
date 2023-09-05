@@ -8,7 +8,7 @@ now_dir = os.getcwd()
 sys.path.append(now_dir)
 import logging
 from LazyImport import lazyload
-from my_utils import load_audio
+
 import numpy as np
 import pyworld
 torchcrepe = lazyload("torchcrepe")  # Fork Feature. Crepe algo for training and preprocess

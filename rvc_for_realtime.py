@@ -13,7 +13,7 @@ import scipy.signal as signal
 
 now_dir = os.getcwd()
 sys.path.append(now_dir)
-from config import Config
+from configs.config import Config
 from multiprocessing import Manager as M
 
 mm = M()

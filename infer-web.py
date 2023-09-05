@@ -73,7 +73,7 @@ from lib.infer_pack.models import (
 from lib.infer_pack.models_onnx import SynthesizerTrnMsNSFsidM
 from infer_uvr5 import _audio_pre_, _audio_pre_new
 from MDXNet import MDXNetDereverb
-from my_utils import load_audio
+from infer.lib.audio import load_audio
 
 
 from sklearn.cluster import MiniBatchKMeans

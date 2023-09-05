@@ -4,7 +4,7 @@ import json
 
 now_dir = os.getcwd()
 sys.path.append(now_dir)
-from config import Config
+from configs.config import Config
 
 Config = Config()
 import PySimpleGUI as sg
