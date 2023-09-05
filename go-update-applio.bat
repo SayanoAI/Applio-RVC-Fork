@@ -15,7 +15,7 @@ setlocal
 ::: Version 2.0.0 - Beta - Developed by Aitron
 :::
 
-set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/main.zip"
+set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/applio-recode.zip"
 set "principal=%cd%"
 set "fixesFolder=Fixes"
 set "localFixesPy=local_fixes.py"
