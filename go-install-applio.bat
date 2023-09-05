@@ -1,25 +1,23 @@
 @echo off
-Title Applio Installer
+Title Applio Recode Installer
 setlocal
 
+:::                       _ _         _____                    _      
+:::     /\               | (_)       |  __ \                  | |     
+:::    /  \   _ __  _ __ | |_  ___   | |__) |___  ___ ___   __| | ___ 
+:::   / /\ \ | '_ \| '_ \| | |/ _ \  |  _  // _ \/ __/ _ \ / _` |/ _ \
+:::  / ____ \| |_) | |_) | | | (_) | | | \ \  __/ (_| (_) | (_| |  __/
+::: /_/    \_\ .__/| .__/|_|_|\___/  |_|  \_\___|\___\___/ \__,_|\___|
+:::          | |   | |                                                
+:::          |_|   |_|                                                
 :::
-:::                       _ _
-:::     /\               | (_)
-:::    /  \   _ __  _ __ | |_  ___
-:::   / /\ \ | '_ \| '_ \| | |/ _ \
-:::  / ____ \| |_) | |_) | | | (_) |
-::: /_/    \_\ .__/| .__/|_|_|\___/
-:::          | |   | |
-:::          |_|   |_|
-:::
-::: Version 1.0.0 - Developed by Aitron
+::: Version 2.0.0 - Beta - Developed by Aitron
 :::
 
-set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/main.zip"
-set "repoFolder=Applio-RVC-Fork"
+set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/applio-recode.zip"
+set "repoFolder=Applio-RVC-Fork-Recode"
 set "fixesFolder=Fixes"
 set "localFixesPy=local_fixes.py"
-set "colabmdx=colab_for_mdx.py"
 set "principal=%cd%\%repoFolder%"
 set "URL_BASE=https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main"
 set "URL_EXTRA=https://huggingface.co/IAHispano/applio/resolve/main"
@@ -33,7 +31,7 @@ echo Step-by-step guide: https://rentry.org/appliolocal
 echo Build Tools: https://aka.ms/vs/17/release/vs_BuildTools.exe
 echo Redistributable: https://aka.ms/vs/17/release/vc_redist.x64.exe
 echo Git: https://github.com/git-for-windows/git/releases/download/v2.42.0.windows.2/Git-2.42.0.2-64-bit.exe
-echo Python: https://www.python.org/ftp/python/3.9.8/python-3.9.8-amd64.exe
+echo Python: Add this route to the windows envirment variables the user path variable: %principal%\runtime\Scripts
 echo.
 pause
 cls
@@ -55,30 +53,17 @@ powershell -command "& { Add-Type -AssemblyName System.IO.Compression.FileSystem
 echo.
 
 echo Copying folder and file structure from subdirectory to main directory...
-robocopy "%principal%\Applio-RVC-Fork-main" "%principal%" /E
+robocopy "%principal%\Applio-RVC-Fork-applio-recode" "%principal%" /E
 echo.
 
 echo Deleting contents of subdirectory (files and folders)...
-rmdir "%principal%\Applio-RVC-Fork-main" /S /Q
+rmdir "%principal%\Applio-RVC-Fork-applio-recode" /S /Q
 echo.
 
 echo Cleaning up...
 del "%principal%\repo.zip"
 echo.
 cls
-
-echo Installing dependencies to run the Fixes file
-pip install requests
-
-echo.
-echo Checking if the local_fixes.py file exists in the Fixes folder...
-if exist "%fixesFolder%\%localFixesPy%" (
-    echo Running the file...
-    python "%fixesFolder%\%localFixesPy%"
-) else (
-    echo The "%localFixesBat%" file was not found in the "Fixes" folder.
-)
-echo.
 
 echo Proceeding to download the models...
 echo.
@@ -87,6 +72,9 @@ echo WARNING: At this point, it's recommended to disable antivirus or firewall, 
 pause
 cls
 
+echo Downloading models in the assets folder...
+cd "assets"
+echo.
 echo Downloading the "pretrained" folder...
 cd "pretrained"
 curl -LJO "%URL_BASE%/pretrained/D32k.pth"
@@ -123,6 +111,29 @@ cd ".."
 echo.
 cls
 
+echo Downloading the hubert_base.pt file...
+cd "hubert"
+curl -LJO "%URL_BASE%/hubert_base.pt"
+cd ".."
+echo.
+cls
+
+
+echo Downloading the rmvpe.pt file...
+cd "rmvpe"
+curl -LJO "%URL_BASE%/rmvpe.pt"
+echo.
+cls
+
+echo Downloading the rmvpe.onnx file...
+curl -LJO "%URL_BASE%/rmvpe.onnx"
+cd ".."
+cd ".."
+echo.
+cls
+
+echo Downloading the rest of the large files
+
 echo Downloading the "uvr5_weights" folder...
 cd "uvr5_weights"
 curl -LJO "%URL_BASE%/uvr5_weights/HP2_all_vocals.pth"
@@ -132,16 +143,6 @@ curl -LJO "%URL_BASE%/uvr5_weights/VR-DeEchoAggressive.pth"
 curl -LJO "%URL_BASE%/uvr5_weights/VR-DeEchoDeReverb.pth"
 curl -LJO "%URL_BASE%/uvr5_weights/VR-DeEchoNormal.pth"
 cd ".."
-echo.
-cls
-
-echo Downloading the rmvpe.pt file...
-curl -LJO "%URL_BASE%/rmvpe.pt"
-echo.
-cls
-
-echo Downloading the hubert_base.pt file...
-curl -LJO "%URL_BASE%/hubert_base.pt"
 echo.
 cls
 
@@ -156,34 +157,35 @@ echo.
 cls
 
 echo Downloading the runtime.zip file...
-curl -LJO "%URL_EXTRA%/runtime.zip"
+curl -LJO "%URL_EXTRA%/runtime-recode.zip"
 echo.
 cls
+
 echo Extracting the runtime.zip file, this might take a while...
-powershell -Command "Expand-Archive -Path 'runtime.zip' -DestinationPath '.'"
-del runtime.zip
+powershell -Command "Expand-Archive -Path 'runtime-recode.zip' -DestinationPath '.'"
+del runtime-recode.zip
 echo.
 cls
 
-echo Downloads completed, proceeding with dependencies...
+echo Downloads completed!
 echo.
 
-echo Downloading dependencies...
-echo.
-
-pip install -r requirements.txt
-pip uninstall torch torchvision torchaudio -y
-echo.
-
-echo NOTE: Your computer might experience slowness during this process; don't worry.
-echo.
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-endlocal
-echo.
-cls
+echo Checking if the local_fixes.py file exists in the Fixes folder...
+if exist "%fixesFolder%\%localFixesPy%" (
+    echo Running the file...
+    runtime\python.exe "%fixesFolder%\%localFixesPy%"
+    echo Fixes Applied!
+    echo.
+) else (
+    echo The "%localFixesPy%" file was not found in the "Fixes" folder.
+    echo Press enter to continue
+    pause
+    echo.
+)
 
 echo Applio has been downloaded!
 echo.
 pause
 color 07
 exit
+

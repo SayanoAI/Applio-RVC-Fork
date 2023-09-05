@@ -44,7 +44,7 @@ def replace_in_file(file_name, old_text, new_text):
 
 if __name__ == "__main__":
     current_path = os.getcwd()
-    file_name = 'extract_f0_print.py'
+    file_name = os.path.join(current_path, "infer", "modules", "train", "extract", "extract_f0_print.py")
     line_to_find = 'import numpy as np, logging'
     text_to_insert = "sys.path.append(r'" + current_path + "')"
     

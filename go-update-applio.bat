@@ -12,7 +12,7 @@ setlocal
 :::          | |   | |
 :::          |_|   |_|
 :::
-::: Version 1.0.0 - Developed by Aitron
+::: Version 2.0.0 - Beta - Developed by Aitron
 :::
 
 set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/main.zip"
@@ -20,7 +20,6 @@ set "principal=%cd%"
 set "fixesFolder=Fixes"
 set "localFixesPy=local_fixes.py"
 set "subdir=temp_update"
-set "colabmdx=colab_for_mdx.py"
 echo.
 cls
 
@@ -36,11 +35,11 @@ powershell -command "& { Add-Type -AssemblyName System.IO.Compression.FileSystem
 echo.
 
 echo Copying folder and file structure from subdirectory to main directory...
-robocopy "%principal%\Applio-RVC-Fork-main" "%principal%" /E
+robocopy "%principal%\Applio-RVC-Fork-applio-recode" "%principal%" /E
 echo.
 
 echo Deleting contents of the subdirectory (files and folders)...
-rmdir "%principal%\Applio-RVC-Fork-main" /S /Q
+rmdir "%principal%\Applio-RVC-Fork-applio-recode" /S /Q
 echo.
 
 echo Cleaning up...
