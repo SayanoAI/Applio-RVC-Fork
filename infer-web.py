@@ -2519,13 +2519,13 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                 pretrained_G14 = gr.Textbox(
                                     lines=4,
                                     label=i18n("Load pre-trained base model G path:"),
-                                    value="pretrained_v2/f0G40k.pth",
+                                    value="assets/pretrained_v2/f0G40k.pth",
                                     interactive=True,
                                 )
                                 pretrained_D15 = gr.Textbox(
                                     lines=4,
                                     label=i18n("Load pre-trained base model D path:"),
-                                    value="pretrained_v2/f0D40k.pth",
+                                    value="assets/pretrained_v2/f0D40k.pth",
                                     interactive=True,
                                 )
                                 gpus16 = gr.Textbox(
