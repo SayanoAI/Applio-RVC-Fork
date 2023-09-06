@@ -110,10 +110,10 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 try:
-    file = open('csvdb/stop.csv', 'x')
+    file = open("csvdb/stop.csv", "x")
     file.close()
-except FileExistsError: pass
-
+except FileExistsError:
+    pass
 
 global DoFormant, Quefrency, Timbre
 
@@ -911,6 +911,8 @@ def click_train(
     if_save_every_weights18,
     version19,
 ):
+    with open("csvdb/stop.csv", "w+") as file:
+        file.write("False")
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
     os.makedirs(exp_dir, exist_ok=True)
