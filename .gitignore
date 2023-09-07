@@ -14,6 +14,7 @@ difdep.py
 EasierGUI.py
 envfilescheck.bat
 export_onnx.py
+.vscode/
 export_onnx_old.py
 ffmpeg.exe
 ffprobe.exe
