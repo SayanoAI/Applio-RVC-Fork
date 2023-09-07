@@ -1464,8 +1464,8 @@ def cli_navigation_loop():
 
 if(config.is_cli):
     print(
-        "\n\nMangio-RVC-Fork v2 CLI App!\n"
-        "Welcome to the CLI version of RVC. Please read the documentation on https://github.com/Mangio621/Mangio-RVC-Fork (README.MD) to understand how to use this app.\n"
+        "\n\nApplio (Mangio-RVC-Fork)\n"
+        "Welcome to the CLI version of RVC. Please read the documentation on https://github.com/IAHispano/Applio-RVC-Fork to understand how to use this app.\n"
     )
     cli_navigation_loop()
 
