@@ -27,8 +27,14 @@ echo.
 set /p choice=Select an option: 
 set choice=%choice: =%
 
+cls
+echo WARNING: It's recommended to disable antivirus or firewall, as errors might occur when starting the ssl.
+pause
+
 if "%choice%"=="1" (
     cls
+    echo WARNING: At this point, it's recommended to disable antivirus or firewall, as errors might occur when downloading pretrained models.
+    pause>null
     echo Starting Applio...
     echo.
     runtime\python.exe infer-web.py --pycmd runtime\python.exe --port 7897
