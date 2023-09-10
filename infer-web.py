@@ -91,7 +91,7 @@ RQuote = lambda val: SQuote(str(val))
 
 tmp = os.path.join(now_dir, "TEMP")
 runtime_dir = os.path.join(now_dir, "runtime/Lib/site-packages")
-directories = ['logs', 'audios', 'datasets', 'weights']
+directories = ['logs', 'audios', 'datasets', 'weights', 'audio-others' , 'audio-outputs']
 
 shutil.rmtree(tmp, ignore_errors=True)
 shutil.rmtree("%s/runtime/Lib/site-packages/infer_pack" % (now_dir), ignore_errors=True)
@@ -2051,7 +2051,7 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                 record_button.change(fn=save_to_wav, inputs=[record_button], outputs=[input_audio0])
                                 record_button.change(fn=easy_infer.change_choices2, inputs=[], outputs=[input_audio1])
 
-                            best_match_index_path1, _ = match_index(sid0.value) # Get initial index from default sid0 (first voice model in list)
+                            best_match_index_path1 = match_index(sid0.value) # Get initial index from default sid0 (first voice model in list)
 
                             with gr.Column(): # Second column for pitch shift and other options
                                 file_index2 = gr.Dropdown(
@@ -2885,7 +2885,7 @@ def GradioSetup(UTheme=gr.themes.Soft()):
 
                         with gr.Column():
                              model_voice_path07 = gr.Dropdown(label=i18n('RVC Model:'), choices=sorted(names), value=default_weight)
-                             best_match_index_path1, _ = match_index(model_voice_path07.value)    
+                             best_match_index_path1 = match_index(model_voice_path07.value)    
                              
                              file_index2_07 = gr.Dropdown(
                                   label=i18n('Select the .index file:'),
