@@ -37,6 +37,7 @@ import datetime
 
 
 from glob import glob1
+import signal
 from signal import SIGTERM
 import librosa
 
@@ -62,7 +63,7 @@ from bark import SAMPLE_RATE
 
 import easy_infer
 import audioEffects
-
+from infer.lib.csvutil import CSVutil
 
 from lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
@@ -79,6 +80,7 @@ from infer.lib.audio import load_audio
 from sklearn.cluster import MiniBatchKMeans
 
 import time
+import csv
 
 from shlex import quote as SQuote
 
@@ -109,17 +111,26 @@ torch.manual_seed(114514)
 logging.getLogger("numba").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-try:
-    file = open("csvdb/stop.csv", "x")
-    file.close()
-except FileExistsError:
-    pass
+
+
+if not os.path.isdir("csvdb/"):
+    os.makedirs("csvdb")
+    frmnt, stp = open("csvdb/formanting.csv", "w"), open("csvdb/stop.csv", "w")
+    frmnt.close()
+    stp.close()
 
 global DoFormant, Quefrency, Timbre
 
-DoFormant = rvc_globals.DoFormant
-Quefrency = rvc_globals.Quefrency
-Timbre = rvc_globals.Timbre
+try:
+    DoFormant, Quefrency, Timbre = CSVutil("csvdb/formanting.csv", "r", "formanting")
+    DoFormant = (
+        lambda DoFormant: True
+        if DoFormant.lower() == "true"
+        else (False if DoFormant.lower() == "false" else DoFormant)
+    )(DoFormant)
+except (ValueError, TypeError, IndexError):
+    DoFormant, Quefrency, Timbre = False, 1.0, 1.0
+    CSVutil("csvdb/formanting.csv", "w+", "formanting", DoFormant, Quefrency, Timbre)
 
 load_dotenv()
 config = Config()
@@ -141,6 +152,8 @@ ngpu = torch.cuda.device_count()
 gpu_infos = []
 mem = []
 if_gpu_ok = False
+
+isinterrupted = 0
 
 
 if torch.cuda.is_available() or ngpu != 0:
@@ -591,36 +604,50 @@ def if_done_multi(done, ps):
             break
     done[0] = True
 
-def formant_enabled(cbox, qfrency, tmbre):
-    global DoFormant, Quefrency, Timbre
+def formant_enabled(
+    cbox, qfrency, tmbre, frmntapply, formantpreset, formant_refresh_button
+):
+    if cbox:
+        DoFormant = True
+        CSVutil("csvdb/formanting.csv", "w+", "formanting", DoFormant, qfrency, tmbre)
 
-    DoFormant = cbox
-    Quefrency = qfrency
-    Timbre = tmbre
+        # print(f"is checked? - {cbox}\ngot {DoFormant}")
 
-    rvc_globals.DoFormant = cbox
-    rvc_globals.Quefrency = qfrency
-    rvc_globals.Timbre = tmbre
+        return (
+            {"value": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+        )
 
-    visibility_update = {"visible": DoFormant, "__type__": "update"}
+    else:
+        DoFormant = False
+        CSVutil("csvdb/formanting.csv", "w+", "formanting", DoFormant, qfrency, tmbre)
 
-    return (
-        {"value": DoFormant, "__type__": "update"},
-    ) + (visibility_update,) * 6
+        # print(f"is checked? - {cbox}\ngot {DoFormant}")
+        return (
+            {"value": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+        )
         
 
 def formant_apply(qfrency, tmbre):
-    global Quefrency, Timbre, DoFormant
-
     Quefrency = qfrency
     Timbre = tmbre
     DoFormant = True
+    CSVutil("csvdb/formanting.csv", "w+", "formanting", DoFormant, qfrency, tmbre)
 
-    rvc_globals.DoFormant = True
-    rvc_globals.Quefrency = qfrency
-    rvc_globals.Timbre = tmbre
-
-    return ({"value": Quefrency, "__type__": "update"}, {"value": Timbre, "__type__": "update"})
+    return (
+        {"value": Quefrency, "__type__": "update"},
+        {"value": Timbre, "__type__": "update"},
+    )
 
 def update_fshift_presets(preset, qfrency, tmbre):
 
@@ -911,8 +938,7 @@ def click_train(
     if_save_every_weights18,
     version19,
 ):
-    with open("csvdb/stop.csv", "w+") as file:
-        file.write("False")
+    CSVutil("csvdb/stop.csv", "w+", "formanting", False)
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
     os.makedirs(exp_dir, exist_ok=True)
@@ -1194,48 +1220,72 @@ def export_onnx(model_path, exported_path):
     return "Finished"
 
 
+
+import re as regex
 import scipy.io.wavfile as wavfile
 
 cli_current_page = "HOME"
 
+
 def cli_split_command(com):
     exp = r'(?:(?<=\s)|^)"(.*?)"(?=\s|$)|(\S+)'
-    split_array = re.findall(exp, com)
+    split_array = regex.findall(exp, com)
     split_array = [group[0] if group[0] else group[1] for group in split_array]
     return split_array
 
-execute_generator_function = lambda genObject: all(x is not None for x in genObject)
+
+def execute_generator_function(genObject):
+    for _ in genObject:
+        pass
+
 
 def cli_infer(com):
-    model_name, source_audio_path, output_file_name, feature_index_path, speaker_id, transposition, f0_method, crepe_hop_length, harvest_median_filter, resample, mix, feature_ratio, protection_amnt, _, f0_min, f0_max, do_formant = cli_split_command(com)[:17]
+    # get VC first
+    com = cli_split_command(com)
+    model_name = com[0]
+    source_audio_path = com[1]
+    output_file_name = com[2]
+    feature_index_path = com[3]
+    f0_file = None  # Not Implemented Yet
 
-    speaker_id, crepe_hop_length, harvest_median_filter, resample = map(int, [speaker_id, crepe_hop_length, harvest_median_filter, resample])
-    transposition, mix, feature_ratio, protection_amnt = map(float, [transposition, mix, feature_ratio, protection_amnt])
+    # Get parameters for inference
+    speaker_id = int(com[4])
+    transposition = float(com[5])
+    f0_method = com[6]
+    crepe_hop_length = int(com[7])
+    harvest_median_filter = int(com[8])
+    resample = int(com[9])
+    mix = float(com[10])
+    feature_ratio = float(com[11])
+    protection_amnt = float(com[12])
+    protect1 = 0.5
 
-    if do_formant.lower() == 'false':
-        Quefrency = 1.0
-        Timbre = 1.0
+    if com[14] == "False" or com[14] == "false":
+        DoFormant = False
+        Quefrency = 0.0
+        Timbre = 0.0
+        CSVutil(
+            "csvdb/formanting.csv", "w+", "formanting", DoFormant, Quefrency, Timbre
+        )
+
     else:
-        Quefrency, Timbre = map(float, cli_split_command(com)[17:19])
+        DoFormant = True
+        Quefrency = float(com[15])
+        Timbre = float(com[16])
+        CSVutil(
+            "csvdb/formanting.csv", "w+", "formanting", DoFormant, Quefrency, Timbre
+        )
 
-    rvc_globals.DoFormant = do_formant.lower() == 'true'
-    rvc_globals.Quefrency = Quefrency
-    rvc_globals.Timbre = Timbre
-
-    output_message = 'Infer-CLI:'
-    output_path = f'audio-others/{output_file_name}'
-    
-    print(f"{output_message} Starting the inference...")
-    vc_data = vc.get_vc(model_name, protection_amnt, protection_amnt)
+    print("Mangio-RVC-Fork Infer-CLI: Starting the inference...")
+    vc_data = vc.get_vc(model_name, protection_amnt, protect1)
     print(vc_data)
-
-    print(f"{output_message} Performing inference...")
+    print("Mangio-RVC-Fork Infer-CLI: Performing inference...")
     conversion_data = vc.vc_single(
         speaker_id,
         source_audio_path,
         source_audio_path,
         transposition,
-        None, # f0 file support not implemented
+        f0_file,
         f0_method,
         feature_index_path,
         feature_index_path,
@@ -1245,103 +1295,151 @@ def cli_infer(com):
         mix,
         protection_amnt,
         crepe_hop_length,
-        f0_min=f0_min,
-        note_min=None,
-        f0_max=f0_max,
-        note_max=None,
-        f0_autotune=False
     )
-
     if "Success." in conversion_data[0]:
-        print(f"{output_message} Inference succeeded. Writing to {output_path}...")
-        wavfile.write(output_path, conversion_data[1][0], conversion_data[1][1])
-        print(f"{output_message} Finished! Saved output to {output_path}")
-    else:
-        print(f"{output_message} Inference failed. Here's the traceback: {conversion_data[0]}")
-        
-def cli_pre_process(com):
-    print("Pre-process: Starting...")
-    execute_generator_function(
-        preprocess_dataset(
-            *cli_split_command(com)[:3],
-            int(cli_split_command(com)[3])
+        print(
+            "Mangio-RVC-Fork Infer-CLI: Inference succeeded. Writing to %s/%s..."
+            % ("audio-outputs", output_file_name)
         )
-    )
-    print("Pre-process: Finished")
+        wavfile.write(
+            "%s/%s" % ("audio-outputs", output_file_name),
+            conversion_data[1][0],
+            conversion_data[1][1],
+        )
+        print(
+            "Mangio-RVC-Fork Infer-CLI: Finished! Saved output to %s/%s"
+            % ("audio-outputs", output_file_name)
+        )
+    else:
+        print("Mangio-RVC-Fork Infer-CLI: Inference failed. Here's the traceback: ")
+        print(conversion_data[0])
 
-def cli_extract_feature(com):
-    model_name, gpus, num_processes, has_pitch_guidance, f0_method, crepe_hop_length, version = cli_split_command(com)
 
-    num_processes = int(num_processes)
-    has_pitch_guidance = bool(int(has_pitch_guidance)) 
-    crepe_hop_length = int(crepe_hop_length)
+def cli_pre_process(com):
+    com = cli_split_command(com)
+    model_name = com[0]
+    trainset_directory = com[1]
+    sample_rate = com[2]
+    num_processes = int(com[3])
 
-    print(
-        f"Extract Feature Has Pitch: {has_pitch_guidance}"
-        f"Extract Feature Version: {version}"
-        "Feature Extraction: Starting..."
-    )
-    generator = extract_f0_feature(
-        gpus, 
-        num_processes, 
-        f0_method, 
-        has_pitch_guidance, 
-        model_name, 
-        version, 
-        crepe_hop_length
+    print("Mangio-RVC-Fork Pre-process: Starting...")
+    generator = preprocess_dataset(
+        trainset_directory, model_name, sample_rate, num_processes
     )
     execute_generator_function(generator)
-    print("Feature Extraction: Finished")
+    print("Mangio-RVC-Fork Pre-process: Finished")
+
+
+def cli_extract_feature(com):
+    com = cli_split_command(com)
+    model_name = com[0]
+    gpus = com[1]
+    num_processes = int(com[2])
+    has_pitch_guidance = True if (int(com[3]) == 1) else False
+    f0_method = com[4]
+    crepe_hop_length = int(com[5])
+    version = com[6]  # v1 or v2
+
+    print("Mangio-RVC-CLI: Extract Feature Has Pitch: " + str(has_pitch_guidance))
+    print("Mangio-RVC-CLI: Extract Feature Version: " + str(version))
+    print("Mangio-RVC-Fork Feature Extraction: Starting...")
+    generator = extract_f0_feature(
+        gpus,
+        num_processes,
+        f0_method,
+        has_pitch_guidance,
+        model_name,
+        version,
+        crepe_hop_length,
+    )
+    execute_generator_function(generator)
+    print("Mangio-RVC-Fork Feature Extraction: Finished")
+
 
 def cli_train(com):
     com = cli_split_command(com)
     model_name = com[0]
     sample_rate = com[1]
-    bool_flags = [bool(int(i)) for i in com[2:11]]
+    has_pitch_guidance = True if (int(com[2]) == 1) else False
+    speaker_id = int(com[3])
+    save_epoch_iteration = int(com[4])
+    total_epoch = int(com[5])  # 10000
+    batch_size = int(com[6])
+    gpu_card_slot_numbers = com[7]
+    if_save_latest = True if (int(com[8]) == 1) else False
+    if_cache_gpu = True if (int(com[9]) == 1) else False
+    if_save_every_weight = True if (int(com[10]) == 1) else False
     version = com[11]
 
     pretrained_base = "pretrained/" if version == "v1" else "pretrained_v2/"
-    
-    g_pretrained_path = f"{pretrained_base}f0G{sample_rate}.pth"
-    d_pretrained_path = f"{pretrained_base}f0D{sample_rate}.pth"
 
-    print("Train-CLI: Training...")
-    click_train(model_name, sample_rate, *bool_flags, g_pretrained_path, d_pretrained_path, version)
+    g_pretrained_path = "%sf0G%s.pth" % (pretrained_base, sample_rate)
+    d_pretrained_path = "%sf0D%s.pth" % (pretrained_base, sample_rate)
 
-def cli_train_feature(com):
-    output_message = 'Train Feature Index-CLI'
-    print(f"{output_message}: Training... Please wait")
-    execute_generator_function(train_index(*cli_split_command(com)))
-    print(f"{output_message}: Done!")
-
-def cli_extract_model(com):
-    extract_small_model_process = extract_small_model(*cli_split_command(com))
-    print(
-        "Extract Small Model: Success!" 
-        if extract_small_model_process == "Success." 
-        else f"{extract_small_model_process}\nExtract Small Model: Failed!"
+    print("Mangio-RVC-Fork Train-CLI: Training...")
+    click_train(
+        model_name,
+        sample_rate,
+        has_pitch_guidance,
+        speaker_id,
+        save_epoch_iteration,
+        total_epoch,
+        batch_size,
+        if_save_latest,
+        g_pretrained_path,
+        d_pretrained_path,
+        gpu_card_slot_numbers,
+        if_cache_gpu,
+        if_save_every_weight,
+        version,
     )
 
-def preset_apply(preset, qfer, tmbr):
-    if preset:
-        try:
-            with open(preset, 'r') as p:
-                content = p.read().splitlines()  
-            qfer, tmbr = content[0], content[1]
-            formant_apply(qfer, tmbr)
-        except IndexError:
-            print("Error: File does not have enough lines to read 'qfer' and 'tmbr'")
-        except FileNotFoundError:
-            print("Error: File does not exist")
-        except Exception as e: 
-            print("An unexpected error occurred", e)
 
-    return ({"value": qfer, "__type__": "update"}, {"value": tmbr, "__type__": "update"})
+def cli_train_feature(com):
+    com = cli_split_command(com)
+    model_name = com[0]
+    version = com[1]
+    print("Mangio-RVC-Fork Train Feature Index-CLI: Training... Please wait")
+    generator = train_index(model_name, version)
+    execute_generator_function(generator)
+    print("Mangio-RVC-Fork Train Feature Index-CLI: Done!")
+
+
+def cli_extract_model(com):
+    com = cli_split_command(com)
+    model_path = com[0]
+    save_name = com[1]
+    sample_rate = com[2]
+    has_pitch_guidance = com[3]
+    info = com[4]
+    version = com[5]
+    extract_small_model_process = extract_small_model(
+        model_path, save_name, sample_rate, has_pitch_guidance, info, version
+    )
+    if extract_small_model_process == "Success.":
+        print("Mangio-RVC-Fork Extract Small Model: Success!")
+    else:
+        print(str(extract_small_model_process))
+        print("Mangio-RVC-Fork Extract Small Model: Failed!")
+
+
+def preset_apply(preset, qfer, tmbr):
+    if str(preset) != "":
+        with open(str(preset), "r") as p:
+            content = p.readlines()
+            qfer, tmbr = content[0].split("\n")[0], content[1]
+            formant_apply(qfer, tmbr)
+    else:
+        pass
+    return (
+        {"value": qfer, "__type__": "update"},
+        {"value": tmbr, "__type__": "update"},
+    )
+
 
 def print_page_details():
-    page_description = {
-
-        'HOME':
+    if cli_current_page == "HOME":
+        print(
             "\n    go home            : Takes you back to home with a navigation list."
             "\n    go infer           : Takes you to inference command execution."
             "\n    go pre-process     : Takes you to training step.1) pre-process command execution."
@@ -1349,11 +1447,12 @@ def print_page_details():
             "\n    go train           : Takes you to training step.3) being or continue training command execution."
             "\n    go train-feature   : Takes you to the train feature index command execution."
             "\n    go extract-model   : Takes you to the extract small model command execution."
-
-        , 'INFER': 
+        )
+    elif cli_current_page == "INFER":
+        print(
             "\n    arg 1) model name with .pth in ./weights: mi-test.pth"
             "\n    arg 2) source audio path: myFolder\\MySource.wav"
-            "\n    arg 3) output file name to be placed in './audio-others': MyTest.wav"
+            "\n    arg 3) output file name to be placed in './audio-outputs': MyTest.wav"
             "\n    arg 4) feature index file path: logs/mi-test/added_IVF3042_Flat_nprobe_1.index"
             "\n    arg 5) speaker id: 0"
             "\n    arg 6) transposition: 0"
@@ -1368,15 +1467,17 @@ def print_page_details():
             "\n    arg 15)* Quefrency for formanting: 8.0 (no need to set if arg14 is False/false)"
             "\n    arg 16)* Timbre for formanting: 1.2 (no need to set if arg14 is False/false) \n"
             "\nExample: mi-test.pth saudio/Sidney.wav myTest.wav logs/mi-test/added_index.index 0 -2 harvest 160 3 0 1 0.95 0.33 0.45 True 8.0 1.2"
-
-        , 'PRE-PROCESS':
+        )
+    elif cli_current_page == "PRE-PROCESS":
+        print(
             "\n    arg 1) Model folder name in ./logs: mi-test"
             "\n    arg 2) Trainset directory: mydataset (or) E:\\my-data-set"
             "\n    arg 3) Sample rate: 40k (32k, 40k, 48k)"
             "\n    arg 4) Number of CPU threads to use: 8 \n"
             "\nExample: mi-test mydataset 40k 24"
-
-        , 'EXTRACT-FEATURE':
+        )
+    elif cli_current_page == "EXTRACT-FEATURE":
+        print(
             "\n    arg 1) Model folder name in ./logs: mi-test"
             "\n    arg 2) Gpu card slot: 0 (0-1-2 if using 3 GPUs)"
             "\n    arg 3) Number of CPU threads to use: 8"
@@ -1385,8 +1486,9 @@ def print_page_details():
             "\n    arg 6) Crepe hop length: 128"
             "\n    arg 7) Version for pre-trained models: v2 (use either v1 or v2)\n"
             "\nExample: mi-test 0 24 1 harvest 128 v2"
-
-        , 'TRAIN':
+        )
+    elif cli_current_page == "TRAIN":
+        print(
             "\n    arg 1) Model folder name in ./logs: mi-test"
             "\n    arg 2) Sample rate: 40k (32k, 40k, 48k)"
             "\n    arg 3) Has Pitch Guidance?: 1 (0 for no, 1 for yes)"
@@ -1400,13 +1502,15 @@ def print_page_details():
             "\n    arg 11) Save extracted small model every generation?: 0 (0 for no, 1 for yes)"
             "\n    arg 12) Model architecture version: v2 (use either v1 or v2)\n"
             "\nExample: mi-test 40k 1 0 50 10000 8 0 0 0 0 v2"
-
-        , 'TRAIN-FEATURE':
+        )
+    elif cli_current_page == "TRAIN-FEATURE":
+        print(
             "\n    arg 1) Model folder name in ./logs: mi-test"
             "\n    arg 2) Model architecture version: v2 (use either v1 or v2)\n"
             "\nExample: mi-test v2"
-
-        , 'EXTRACT-MODEL':
+        )
+    elif cli_current_page == "EXTRACT-MODEL":
+        print(
             "\n    arg 1) Model Path: logs/mi-test/G_168000.pth"
             "\n    arg 2) Model save name: MyModel"
             "\n    arg 3) Sample rate: 40k (32k, 40k, 48k)"
@@ -1414,72 +1518,67 @@ def print_page_details():
             '\n    arg 5) Model information: "My Model"'
             "\n    arg 6) Model architecture version: v2 (use either v1 or v2)\n"
             '\nExample: logs/mi-test/G_168000.pth MyModel 40k 1 "Created by Cole Mangio" v2'
-
-    }
-    
-    print(page_description.get(cli_current_page, 'Invalid page'))
-
+        )
 
 def change_page(page):
     global cli_current_page
     cli_current_page = page
     return 0
+
 def execute_command(com):
-    command_to_page = {
-        "go home": "HOME",
-        "go infer": "INFER",
-        "go pre-process": "PRE-PROCESS",
-        "go extract-feature": "EXTRACT-FEATURE",
-        "go train": "TRAIN",
-        "go train-feature": "TRAIN-FEATURE",
-        "go extract-model": "EXTRACT-MODEL",
-    }
-    
-    page_to_function = {
-        "INFER": cli_infer,
-        "PRE-PROCESS": cli_pre_process,
-        "EXTRACT-FEATURE": cli_extract_feature,
-        "TRAIN": cli_train,
-        "TRAIN-FEATURE": cli_train_feature,
-        "EXTRACT-MODEL": cli_extract_model,
-    }
+    if com == "go home":
+        return change_page("HOME")
+    elif com == "go infer":
+        return change_page("INFER")
+    elif com == "go pre-process":
+        return change_page("PRE-PROCESS")
+    elif com == "go extract-feature":
+        return change_page("EXTRACT-FEATURE")
+    elif com == "go train":
+        return change_page("TRAIN")
+    elif com == "go train-feature":
+        return change_page("TRAIN-FEATURE")
+    elif com == "go extract-model":
+        return change_page("EXTRACT-MODEL")
+    else:
+        if com[:3] == "go ":
+            print("page '%s' does not exist!" % com[3:])
+            return 0
 
-    if com in command_to_page:
-        return change_page(command_to_page[com])
-    
-    if com[:3] == "go ":
-        print(f"page '{com[3:]}' does not exist!")
-        return 0
-
-    if cli_current_page in page_to_function:
-        page_to_function[cli_current_page](com)
+    if cli_current_page == "INFER":
+        cli_infer(com)
+    elif cli_current_page == "PRE-PROCESS":
+        cli_pre_process(com)
+    elif cli_current_page == "EXTRACT-FEATURE":
+        cli_extract_feature(com)
+    elif cli_current_page == "TRAIN":
+        cli_train(com)
+    elif cli_current_page == "TRAIN-FEATURE":
+        cli_train_feature(com)
+    elif cli_current_page == "EXTRACT-MODEL":
+        cli_extract_model(com)
 
 def cli_navigation_loop():
     while True:
-        print(f"\nYou are currently in '{cli_current_page}':")
+        print("\nYou are currently in '%s':" % cli_current_page)
         print_page_details()
-        print(f"{cli_current_page}: ", end="")
-        try: execute_command(input())
-        except Exception as e: print(f"An error occurred: {traceback.format_exc()}")
+        command = input("%s: " % cli_current_page)
+        try:
+            execute_command(command)
+        except:
+            print(traceback.format_exc())
 
-if(config.is_cli):
+
+if config.is_cli:
+    print("\n\nMangio-RVC-Fork v2 CLI App!\n")
     print(
-        "\n\nApplio (Mangio-RVC-Fork)\n"
-        "Welcome to the CLI version of RVC. Please read the documentation on https://github.com/IAHispano/Applio-RVC-Fork to understand how to use this app.\n"
+        "Welcome to the CLI version of RVC. Please read the documentation on https://github.com/Mangio621/Mangio-RVC-Fork (README.MD) to understand how to use this app.\n"
     )
     cli_navigation_loop()
 
-'''
-def get_presets():
-    data = None
-    with open('../inference-presets.json', 'r') as file:
-        data = json.load(file)
-    preset_names = []
-    for preset in data['presets']:
-        preset_names.append(preset['name'])
-    
-    return preset_names
-'''
+
+
+
 
 def switch_pitch_controls(f0method0):
     is_visible = f0method0 != 'rmvpe'
@@ -1499,57 +1598,78 @@ def switch_pitch_controls(f0method0):
             {"visible": False, "__type__": "update"}
         )
 
-def match_index(sid0: str) -> tuple:
-    sid0strip = re.sub(r'\.pth|\.onnx$', '', sid0)
-    sid0name = os.path.split(sid0strip)[-1]  # Extract only the name, not the directory
+def match_index(sid0):
+    picked = False
+    # folder = sid0.split('.')[0]
 
-    # Check if the sid0strip has the specific ending format _eXXX_sXXX
-    if re.match(r'.+_e\d+_s\d+$', sid0name):
-        base_model_name = sid0name.rsplit('_', 2)[0]
+    # folder = re.split(r'. |_', sid0)[0]
+    folder = sid0.split(".")[0].split("_")[0]
+    # folder_test = sid0.split('.')[0].split('_')[0].split('-')[0]
+    parent_dir = "./logs/" + folder
+    # print(parent_dir)
+    if os.path.exists(parent_dir):
+        # print('path exists')
+        for filename in os.listdir(parent_dir.replace("\\", "/")):
+            if filename.endswith(".index"):
+                for i in range(len(indexes_list)):
+                    if indexes_list[i] == (
+                        os.path.join(("./logs/" + folder), filename).replace("\\", "/")
+                    ):
+                        # print('regular index found')
+                        break
+                    else:
+                        if indexes_list[i] == (
+                            os.path.join(
+                                ("./logs/" + folder.lower()), filename
+                            ).replace("\\", "/")
+                        ):
+                            # print('lowered index found')
+                            parent_dir = "./logs/" + folder.lower()
+                            break
+                        # elif (indexes_list[i]).casefold() == ((os.path.join(("./logs/" + folder), filename).replace('\\','/')).casefold()):
+                        #    print('8')
+                        #    parent_dir = "./logs/" + folder.casefold()
+                        #    break
+                        # elif (indexes_list[i]) == ((os.path.join(("./logs/" + folder_test), filename).replace('\\','/'))):
+                        #    parent_dir = "./logs/" + folder_test
+                        #    print(parent_dir)
+                        #    break
+                        # elif (indexes_list[i]) == (os.path.join(("./logs/" + folder_test.lower()), filename).replace('\\','/')):
+                        #    parent_dir = "./logs/" + folder_test
+                        #    print(parent_dir)
+                        #    break
+                        # else:
+                        #    #print('couldnt find index')
+                        #    continue
+
+                # print('all done')
+                index_path = os.path.join(
+                    parent_dir.replace("\\", "/"), filename.replace("\\", "/")
+                ).replace("\\", "/")
+                # print(index_path)
+                return (index_path, index_path)
+
     else:
-        base_model_name = sid0name
+        # print('nothing found')
+        return ("", "")
 
-    sid_directory = os.path.join(index_root, base_model_name)
-    directories_to_search = [sid_directory] if os.path.exists(sid_directory) else []
-    directories_to_search.append(index_root)
-
-    matching_index_files = []
-
-    for directory in directories_to_search:
-        for filename in os.listdir(directory):
-            if filename.endswith('.index') and 'trained' not in filename:
-                # Condition to match the name
-                name_match = any(name.lower() in filename.lower() for name in [sid0name, base_model_name])
-                
-                # If in the specific directory, it's automatically a match
-                folder_match = directory == sid_directory
-
-                if name_match or folder_match:
-                    index_path = os.path.join(directory, filename)
-                    if index_path in indexes_list:
-                        matching_index_files.append((index_path, os.path.getsize(index_path), ' ' not in filename))
-
-    if matching_index_files:
-        # Sort by favoring files without spaces and by size (largest size first)
-        matching_index_files.sort(key=lambda x: (-x[2], -x[1]))
-        best_match_index_path = matching_index_files[0][0]
-        return best_match_index_path, best_match_index_path
-
-    return '', ''
 def stoptraining(mim):
-    if mim:
+    if int(mim) == 1:
+        CSVutil("csvdb/stop.csv", "w+", "stop", "True")
+        # p.terminate()
+        # p.kill()
         try:
-            with open('csvdb/stop.csv', 'w+') as file: file.write("True")
-            os.kill(PID, SIGTERM)
+            os.kill(PID, signal.SIGTERM)
         except Exception as e:
             print(f"Couldn't click due to {e}")
-        return (
-            {"visible": True , "__type__": "update"},
-            {"visible": False, "__type__": "update"})
+            pass
+    else:
+        pass
+
     return (
         {"visible": False, "__type__": "update"},
-        {"visible": True , "__type__": "update"})
-
+        {"visible": True, "__type__": "update"},
+    )
 
 weights_dir = 'weights/'
 
@@ -2132,13 +2252,44 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                     visible=bool(DoFormant),
                                     interactive=True,
                                 )
-                                frmntbut = gr.Button(i18n("Apply"), variant="primary", visible=bool(DoFormant))
-
-                            formant_preset.change(fn=preset_apply, inputs=[formant_preset, qfrency, tmbre], outputs=[qfrency, tmbre])
-                            
-                            formanting.change(fn=formant_enabled,inputs=[formanting,qfrency,tmbre],outputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button])
-                            frmntbut.click(fn=formant_apply,inputs=[qfrency, tmbre], outputs=[qfrency, tmbre])
-                            formant_refresh_button.click(fn=update_fshift_presets,inputs=[formant_preset, qfrency, tmbre],outputs=[formant_preset, qfrency, tmbre])
+                                frmntbut = gr.Button(
+                                   "Apply", variant="primary", visible=bool(DoFormant)
+                                )
+                               
+                            formant_preset.change(
+                                fn=preset_apply,
+                                inputs=[formant_preset, qfrency, tmbre],
+                                outputs=[qfrency, tmbre],
+                            )
+                            formanting.change(
+                               fn=formant_enabled,
+                               inputs=[
+                                   formanting,
+                                   qfrency,
+                                   tmbre,
+                                   frmntbut,
+                                   formant_preset,
+                                   formant_refresh_button,
+                               ],
+                               outputs=[
+                                   formanting,
+                                   qfrency,
+                                   tmbre,
+                                   frmntbut,
+                                   formant_preset,
+                                   formant_refresh_button,
+                               ],
+                            )
+                            frmntbut.click(
+                                fn=formant_apply,
+                                inputs=[qfrency, tmbre],
+                                outputs=[qfrency, tmbre],
+                            )
+                            formant_refresh_button.click(
+                                fn=update_fshift_presets,
+                                inputs=[formant_preset, qfrency, tmbre],
+                                outputs=[formant_preset, qfrency, tmbre],
+                            )
 
                     # Function to toggle advanced settings
                     def toggle_advanced_settings(checkbox):
