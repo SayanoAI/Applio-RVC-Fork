@@ -1718,92 +1718,6 @@ from gtts import gTTS
 import edge_tts
 import asyncio
 
-def vc_single_tts(
-    sid,
-    input_audio_path,
-    f0_up_key,
-    f0_file,
-    f0_method,
-    file_index,
-    file_index2,
-    # file_big_npy,
-    index_rate,
-    filter_radius,
-    resample_sr,
-    rms_mix_rate,
-    protect,
-    crepe_hop_length,
-    f0_autotune,
-):  
-    global tgt_sr, net_g, vc, hubert_model, version, cpt
-    if input_audio_path is None:
-        return "You need to upload an audio", None
-    f0_up_key = int(f0_up_key)
-    try:
-        audio = load_audio(input_audio_path, 16000)
-        audio_max = np.abs(audio).max() / 0.95
-        if audio_max > 1:
-            audio /= audio_max
-        times = [0, 0, 0]
-        if not hubert_model:
-            load_hubert()
-        if_f0 = cpt.get("f0", 1)
-        file_index = (
-            (
-                file_index.strip(" ")
-                .strip('"')
-                .strip("\n")
-                .strip('"')
-                .strip(" ")
-                .replace("trained", "added")
-            )
-            if file_index != ""
-            else file_index2
-        )  # reemplace for 2
-        # file_big_npy = (
-        #     file_big_npy.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
-        # )
-        audio_opt = Pipeline(
-            hubert_model,
-            net_g,
-            sid,
-            audio,
-            input_audio_path,
-            times,
-            f0_up_key,
-            f0_method,
-            file_index,
-            # file_big_npy,
-            index_rate,
-            if_f0,
-            filter_radius,
-            tgt_sr,
-            resample_sr,
-            rms_mix_rate,
-            version,
-            protect,
-            crepe_hop_length,
-            f0_autotune,
-            f0_file=f0_file,
-        )
-        if tgt_sr != resample_sr >= 16000:
-            tgt_sr = resample_sr
-        index_info = (
-            "Using index:%s." % file_index
-            if os.path.exists(file_index)
-            else "Index not used."
-        )
-        return "Success.\n %s\nTime:\n npy:%ss, f0:%ss, infer:%ss" % (
-            index_info,
-            times[0],
-            times[1],
-            times[2],
-        ), (tgt_sr, audio_opt)
-    except:
-        info = traceback.format_exc()
-        print(info)
-        return info, (None, None)
-
 
 
 
@@ -1820,13 +1734,8 @@ def custom_voice(
         file_index2='',
         ):
 
-        #hubert_model = None
+        vc.get_vc(model_voice_path)
 
-        vc.get_vc(
-            sid=model_voice_path,  # model path
-            to_return_protect0=0.33,
-            to_return_protect1=0.33
-        )
 
         for _value_item in _values:
             filename = "audio2/"+audio_files[_value_item] if _value_item != "converted_tts" else audio_files[0]
@@ -1835,10 +1744,10 @@ def custom_voice(
                 print(audio_files[_value_item], model_voice_path)
             except:
                 pass
-
-            info_, (sample_, audio_output_) = vc_single_tts(
+            info_, (sample_, audio_output_) = vc.vc_single_dont_save(
                 sid=0,
-                input_audio_path=filename, #f"audio2/{filename}",
+                input_audio_path0=filename, #f"audio2/{filename}",
+                input_audio_path1=filename, #f"audio2/{filename}",
                 f0_up_key=transpose, # transpose for m to f and reverse 0 12
                 f0_file=None,
                 f0_method= f0method,
@@ -1852,6 +1761,10 @@ def custom_voice(
                 protect= float(0.33),
                 crepe_hop_length= crepe_hop_length_,
                 f0_autotune=f0_autotune,
+                f0_min=50,
+                note_min=50,
+                f0_max=1100,
+                note_max=1100
             )
 
             sf.write(
@@ -1949,11 +1862,7 @@ def make_test(
             return os.path.join(now_dir, "audio-outputs", "converted_tts.wav"), os.path.join(now_dir, "audio-outputs", "real_tts.wav")
         elif tts_method == "Bark-tts":
             try:
-                vc.get_vc(
-                sid=model_path,  # model path
-                to_return_protect0=0.33,
-                to_return_protect1=0.33
-                )
+                
                 script = tts_text.replace("\n", " ").strip()
                 sentences = sent_tokenize(script)
                 print(sentences)
@@ -1969,9 +1878,11 @@ def make_test(
                     samplerate=SAMPLE_RATE,
                     data=np.concatenate(pieces)
                 )
-                info_, (sample_, audio_output_) = vc_single_tts(
+                vc.get_vc(model_path)
+                info_, (sample_, audio_output_) = vc.vc_single_dont_save(
                     sid=0,
-                    input_audio_path=os.path.join(now_dir, "audio-outputs", "bark_out.wav"), #f"audio2/{filename}",
+                    input_audio_path0=os.path.join(now_dir, "audio-outputs", "bark_out.wav"), #f"audio2/{filename}",
+                    input_audio_path1=os.path.join(now_dir, "audio-outputs", "bark_out.wav"), #f"audio2/{filename}",
                     f0_up_key=transpose, # transpose for m to f and reverse 0 12
                     f0_file=None,
                     f0_method=f0_method,
@@ -1985,6 +1896,10 @@ def make_test(
                     protect= float(0.33),
                     crepe_hop_length= crepe_hop_length,
                     f0_autotune=f0_autotune,
+                    f0_min=50,
+                    note_min=50,
+                    f0_max=1100,
+                    note_max=1100
                 )
                 wavfile.write(os.path.join(now_dir, "audio-outputs", "converted_bark.wav"), rate=sample_, data=audio_output_)
                 return os.path.join(now_dir, "audio-outputs", "converted_bark.wav"), nombre_archivo

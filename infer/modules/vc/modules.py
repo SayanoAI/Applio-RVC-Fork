@@ -300,6 +300,137 @@ class VC:
             logger.warn(info)
             return info, (None, None)
 
+    def vc_single_dont_save(
+        self,
+        sid,
+        input_audio_path0,
+        input_audio_path1,
+        f0_up_key,
+        f0_file,
+        f0_method,
+        file_index,
+        file_index2,
+        index_rate,
+        filter_radius,
+        resample_sr,
+        rms_mix_rate,
+        protect,
+        crepe_hop_length,
+        f0_min,
+        note_min,
+        f0_max,
+        note_max,
+        f0_autotune,
+    ):
+        global total_time
+        total_time = 0
+        start_time = time.time()
+        if not input_audio_path0 and not input_audio_path1:
+            return "You need to upload an audio", None
+        
+        if (not os.path.exists(input_audio_path0)) and (not os.path.exists(os.path.join(now_dir, input_audio_path0))):
+            return "Audio was not properly selected or doesn't exist", None
+        
+        input_audio_path1 = input_audio_path1 or input_audio_path0
+        print(f"\nStarting inference for '{os.path.basename(input_audio_path1)}'")
+        print("-------------------")
+        f0_up_key = int(f0_up_key)
+        if rvc_globals.NotesOrHertz and f0_method != 'rmvpe':
+            f0_min = note_to_hz(note_min) if note_min else 50
+            f0_max = note_to_hz(note_max) if note_max else 1100
+            print(f"Converted Min pitch: freq - {f0_min}\n"
+                  f"Converted Max pitch: freq - {f0_max}")
+        else:
+            f0_min = f0_min or 50
+            f0_max = f0_max or 1100
+        try:
+            input_audio_path1 = input_audio_path1 or input_audio_path0
+            print(f"Attempting to load {input_audio_path1}....")
+            audio = load_audio(file=input_audio_path1,
+                               sr=16000,
+                               DoFormant=rvc_globals.DoFormant,
+                               Quefrency=rvc_globals.Quefrency,
+                               Timbre=rvc_globals.Timbre)
+            
+            audio_max = np.abs(audio).max() / 0.95
+            if audio_max > 1:
+                audio /= audio_max
+            times = [0, 0, 0]
+
+            if self.hubert_model is None:
+                self.hubert_model = load_hubert(self.config)
+
+            try:
+                self.if_f0 = self.cpt.get("f0", 1)
+            except NameError:
+                message = "Model was not properly selected"
+                print(message)
+                return message, None
+            
+            file_index = (
+                (
+                    file_index.strip(" ")
+                    .strip('"')
+                    .strip("\n")
+                    .strip('"')
+                    .strip(" ")
+                    .replace("trained", "added")
+                )
+                if file_index != ""
+                else file_index2
+            )  # 防止小白写错，自动帮他替换掉
+
+            try:
+                audio_opt = self.pipeline.pipeline(
+                    self.hubert_model,
+                    self.net_g,
+                    sid,
+                    audio,
+                    input_audio_path1,
+                    times,
+                    f0_up_key,
+                    f0_method,
+                    file_index,
+                    index_rate,
+                    self.if_f0,
+                    filter_radius,
+                    self.tgt_sr,
+                    resample_sr,
+                    rms_mix_rate,
+                    self.version,
+                    protect,
+                    crepe_hop_length,
+                    f0_autotune,
+                    f0_file=f0_file,
+                    f0_min=f0_min,
+                    f0_max=f0_max
+                    )
+            except AssertionError:
+                message = "Mismatching index version detected (v1 with v2, or v2 with v1)."
+                print(message)
+                return message, None
+            except NameError:
+                message = "RVC libraries are still loading. Please try again in a few seconds."
+                print(message)
+                return message, None
+
+            if self.tgt_sr != resample_sr >= 16000:
+                self.tgt_sr = resample_sr
+            index_info = (
+                "Index:\n%s." % file_index
+                if os.path.exists(file_index)
+                else "Index not used."
+            )
+            end_time = time.time()
+            total_time = end_time - start_time
+
+            return f"Success.\n {index_info}\nTime:\n npy:{times[0]}, f0:{times[1]}, infer:{times[2]}\nTotal Time: {total_time} seconds", (self.tgt_sr, audio_opt)
+        except:
+            info = traceback.format_exc()
+            logger.warn(info)
+            return info, (None, None)
+
+
     def vc_multi(
         self,
         sid,
