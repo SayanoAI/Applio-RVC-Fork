@@ -93,6 +93,10 @@ As part of the ongoing development of this fork, the following features are plan
 - Implementing an automatic removal mechanism for old generations to optimize storage space usage. This feature ensures that the repository remains efficient and organized over time.
 - Streamlining the training process for Paperspace machines to further improve efficiency and resource utilization during training tasks.
 
+## Compatibility
+- AMD/Intel graphics cards acceleration supported.
+- Intel ARC graphics cards acceleration with IPEX supported.
+
 ## ✨ Installation
 
 ### Automatic installation (Windows):
@@ -118,6 +122,19 @@ pip install -r requirements.txt
 ```bash
 cd Applio-RVC-Fork
 make install # Do this everytime you start your paperspace machine
+```
+### You can also use pip to install them:
+```bash
+
+for Nvidia graphics cards
+  pip install -r requirements.txt
+
+for AMD/Intel graphics cards：
+  pip install -r requirements-dml.txt
+
+for Intel ARC graphics cards on Linux / WSL using Python 3.10: 
+  pip install -r requirements-ipex.txt
+
 ```
 
 ## 🪄 Running the Web GUI (Inference & Train) 
