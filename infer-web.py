@@ -2399,8 +2399,10 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                         inputs=[sid0, protect0, protect1],
                         outputs=[spk_item, protect0, protect1],
                     )
+                    if not sid0.value == '':
+                        spk_item, protect0, protect1 = vc.get_vc(sid0.value, protect0, protect1)
 
-                    spk_item, protect0, protect1 = vc.get_vc(sid0.value, protect0, protect1) 
+                    #spk_item, protect0, protect1 = vc.get_vc(sid0.value, protect0, protect1) 
 
                     # Function to toggle advanced settings
                     def toggle_advanced_settings_batch(checkbox):
