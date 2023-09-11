@@ -1,14 +1,15 @@
 @echo off
-title Applio Installer
+title Applio
 
-:::                       _ _         _____                    _      
-:::     /\               | (_)       |  __ \                  | |     
-:::    /  \   _ __  _ __ | |_  ___   | |__) |___  ___ ___   __| | ___ 
-:::   / /\ \ | '_ \| '_ \| | |/ _ \  |  _  // _ \/ __/ _ \ / _` |/ _ \
-:::  / ____ \| |_) | |_) | | | (_) | | | \ \  __/ (_| (_) | (_| |  __/
-::: /_/    \_\ .__/| .__/|_|_|\___/  |_|  \_\___|\___\___/ \__,_|\___|
-:::          | |   | |                                                
-:::          |_|   |_|                                                
+:::
+:::                       _ _
+:::     /\               | (_)
+:::    /  \   _ __  _ __ | |_  ___
+:::   / /\ \ | '_ \| '_ \| | |/ _ \
+:::  / ____ \| |_) | |_) | | | (_) |
+::: /_/    \_\ .__/| .__/|_|_|\___/
+:::          | |   | |
+:::          |_|   |_|
 :::
 :::
 
@@ -35,7 +36,6 @@ set choice=%choice: =%
 
 if "%choice%"=="1" (
     cls
-    echo Starting Applio Reinstaller...
     echo.
     goto reinstaller
     pause
@@ -46,7 +46,6 @@ if "%choice%"=="1" (
 
 if "%choice%"=="2" (
     cls
-    echo Starting Applio Updater...
     echo.
     goto updater
     pause
@@ -56,7 +55,6 @@ if "%choice%"=="2" (
 
 if "%choice%"=="3" (
     cls
-    echo Updating Applio + Runtime...
     echo.
     goto updaterRuntime
     pause
