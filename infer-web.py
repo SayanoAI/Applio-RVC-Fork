@@ -198,7 +198,7 @@ if if_gpu_ok and len(gpu_infos) > 0:
     gpu_info = "\n".join(gpu_infos)
     default_batch_size = min(mem) // 2
 else:
-    gpu_info = i18n("很遗憾您这没有能用的显卡来支持您训练")
+    gpu_info = "Unfortunately, there is no compatible GPU available to support your training."
     default_batch_size = 1
 gpus = "-".join([i[0] for i in gpu_infos])
 
@@ -2397,7 +2397,7 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                     sid0.change(
                         fn=vc.get_vc,
                         inputs=[sid0, protect0, protect1],
-                        outputs=[spk_item, protect0, protect1, file_index2],
+                        outputs=[spk_item, protect0, protect1],
                     )
 
                     spk_item, protect0, protect1 = vc.get_vc(sid0.value, protect0, protect1) 

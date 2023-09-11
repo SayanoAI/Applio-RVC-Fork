@@ -149,12 +149,12 @@ class VC:
 
         return (
             (
-                {"visible": True, "maximum": n_spk, "__type__": "update"},
+                {"visible": False, "maximum": n_spk, "__type__": "update"},
                 to_return_protect0,
                 to_return_protect1
             )
             if to_return_protect
-            else {"visible": True, "maximum": n_spk, "__type__": "update"}
+            else {"visible": False, "maximum": n_spk, "__type__": "update"}
         )
     
 
