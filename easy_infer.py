@@ -15,7 +15,7 @@ import zipfile
 import traceback
 import json
 import mdx
-from mdx_processing_script import get_model_list,id_to_ptm,prepare_mdx,run_mdx
+from infer.modules.uvr5.mdxprocess import get_model_list,id_to_ptm,prepare_mdx,run_mdx
 import requests
 import wget
 import ffmpeg
@@ -34,9 +34,10 @@ from lib.infer_pack.models import (
     SynthesizerTrnMs768NSFsid,
     SynthesizerTrnMs768NSFsid_nono,
 )
-from MDXNet import MDXNetDereverb
+
 from configs.config import Config
-from infer_uvr5 import _audio_pre_, _audio_pre_new
+from infer.modules.uvr5.mdxnet import MDXNetDereverb
+from infer.modules.uvr5.preprocess import AudioPre, AudioPreDeEcho
 from huggingface_hub import HfApi, list_models
 from huggingface_hub import login
 from i18n import I18nAuto
@@ -779,71 +780,97 @@ def uvr(input_url, output_path, model_name, inp_root, save_root_vocal, paths, sa
     instrumental_audio_path_mdx = os.path.join(instrumental_directory, instrumental_formatted_mdx)
 
     if architecture == "VR":
-       try:
-           print(i18n("Starting audio conversion... (This might take a moment)"))
-           inp_root, save_root_vocal, save_root_ins = [x.strip(" ").strip('"').strip("\n").strip('"').strip(" ") for x in [inp_root, save_root_vocal, save_root_ins]]
-           usable_files = [os.path.join(inp_root, file) 
-                          for file in os.listdir(inp_root) 
-                          if file.endswith(tuple(sup_audioext))]    
-           
-        
-           pre_fun = MDXNetDereverb(15) if model_name == "onnx_dereverb_By_FoxJoy" else (_audio_pre_ if "DeEcho" not in model_name else _audio_pre_new)(
-                       agg=int(agg),
-                       model_path=os.path.join(weight_uvr5_root, model_name + ".pth"),
-                       device=config.device,
-                       is_half=config.is_half,
-                   )
-                
-           try:
-              if paths != None:
+        try:
+            print(i18n("Starting audio conversion... (This might take a moment)"))
+            inp_root = inp_root.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
+            save_root_vocal = (
+                save_root_vocal.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
+            )
+            save_root_ins = (
+                save_root_ins.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
+            )
+            usable_files = [
+                os.path.join(inp_root, file)
+                for file in os.listdir(inp_root)
+                if file.endswith(tuple(sup_audioext))
+            ]
+            if model_name == "onnx_dereverb_By_FoxJoy":
+                pre_fun = MDXNetDereverb(15, config.device)
+            else:
+                func = AudioPre if "DeEcho" not in model_name else AudioPreDeEcho
+                pre_fun = func(
+                    agg=int(agg),
+                    model_path=os.path.join(
+                        os.getenv("weight_uvr5_root"), model_name + ".pth"
+                   ),
+                    device=config.device,
+                    is_half=config.is_half,
+                )
+            if inp_root != "":
+                paths = usable_files
+            else:
                 paths = [path.name for path in paths]
-              else:
-                paths = usable_files
-                
-           except:
+            for path in paths:
+                inp_path = os.path.join(inp_root, path)
+                need_reformat = 1
+                done = 0
+                try:
+                    info = ffmpeg.probe(inp_path, cmd="ffprobe")
+                    if (
+                        info["streams"][0]["channels"] == 2
+                    and info["streams"][0]["sample_rate"] == "44100"
+                    ):
+                        need_reformat = 0
+                        pre_fun._path_audio_(
+                            inp_path, save_root_ins, save_root_vocal, format0
+                        )
+                        done = 1
+                except:
+                    need_reformat = 1
+                    traceback.print_exc()
+                if need_reformat == 1:
+                    tmp_path = "%s/%s.reformatted.wav" % (
+                        os.path.join(os.environ["TEMP"]),
+                        os.path.basename(inp_path),
+                    )
+                    os.system(
+                        "ffmpeg -i %s -vn -acodec pcm_s16le -ac 2 -ar 44100 %s -y"
+                        % (inp_path, tmp_path)
+                    )
+                    inp_path = tmp_path
+                try:
+                    if done == 0:
+                        pre_fun.path_audio(
+                            inp_path, save_root_ins, save_root_vocal, format0
+                        )
+                    print("%s->Success" % (os.path.basename(inp_path)))
+                except:
+                    try:
+                        if done == 0:
+                            pre_fun._path_audio_(
+                                inp_path, save_root_ins, save_root_vocal, format0
+                            )
+                        print("%s->Success" % (os.path.basename(inp_path)))
+                    except:
+                        print(
+                            "%s->%s" % (os.path.basename(inp_path), traceback.format_exc())
+                        )
+        except:
+            print(traceback.format_exc())
+        finally:
+            try:
+                if model_name == "onnx_dereverb_By_FoxJoy":
+                    del pre_fun.pred.model
+                    del pre_fun.pred.model_
+                else:
+                    del pre_fun.model
+                    del pre_fun
+                return i18n("Finished"), vocal_audio_path, instrumental_audio_path
+            except:
                 traceback.print_exc()
-                paths = usable_files
-           print(paths) 
-           for path in paths:
-               inp_path = os.path.join(inp_root, path)
-               need_reformat, done = 1, 0
-
-               try:
-                   info = ffmpeg.probe(inp_path, cmd="ffprobe")
-                   if info["streams"][0]["channels"] == 2 and info["streams"][0]["sample_rate"] == "44100":
-                       need_reformat = 0
-                       pre_fun._path_audio_(inp_path, save_root_ins, save_root_vocal, format0)
-                       done = 1
-               except:
-                   traceback.print_exc()
-
-               if need_reformat:
-                   tmp_path = f"{tmp}/{os.path.basename(inp_path)}.reformatted.wav"
-                   os.system(f"ffmpeg -i {inp_path} -vn -acodec pcm_s16le -ac 2 -ar 44100 {tmp_path} -y")
-                   inp_path = tmp_path
-
-               try:
-                   if not done:
-                       pre_fun._path_audio_(inp_path, save_root_ins, save_root_vocal, format0)
-                   print(f"{os.path.basename(inp_path)}->Success")
-               except:
-                   print(f"{os.path.basename(inp_path)}->{traceback.format_exc()}")
-       except:
-           traceback.print_exc()
-       finally:
-           try:
-               if model_name == "onnx_dereverb_By_FoxJoy":
-                   del pre_fun.pred.model
-                   del pre_fun.pred.model_
-               else:
-                   del pre_fun.model
-
-               del pre_fun
-               return i18n("Finished"), vocal_audio_path, instrumental_audio_path
-           except: traceback.print_exc()
-
-           if torch.cuda.is_available(): torch.cuda.empty_cache()
-
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                print("Executed torch.cuda.empty_cache()")
     elif architecture == "MDX":
        try:
            print(i18n("Starting audio conversion... (This might take a moment)"))

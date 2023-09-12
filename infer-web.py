@@ -11,7 +11,7 @@ import threading
 import lib.globals.globals as rvc_globals
 from LazyImport import lazyload
 import mdx
-from mdx_processing_script import get_model_list,id_to_ptm,prepare_mdx,run_mdx
+from infer.modules.uvr5.mdxprocess import get_model_list,id_to_ptm,prepare_mdx,run_mdx
 math = lazyload('math')
 import traceback
 import warnings
@@ -49,10 +49,10 @@ from infer.lib.train.process_ckpt import (
     merge,
     show_info,
 )
-#from infer.modules.uvr5.modules import uvr
+from infer.modules.uvr5.mdxnet import MDXNetDereverb
+from infer.modules.uvr5.preprocess import AudioPre, AudioPreDeEcho
 from infer.modules.vc.modules import VC
 from infer.modules.vc.utils import *
-from infer.modules.vc.pipeline import Pipeline
 import lib.globals.globals as rvc_globals
 math = lazyload('math')
 ffmpeg = lazyload('ffmpeg')
@@ -72,9 +72,6 @@ from lib.infer_pack.models import (
     SynthesizerTrnMs768NSFsid_nono,
 )
 from lib.infer_pack.models_onnx import SynthesizerTrnMsNSFsidM
-from infer_uvr5 import _audio_pre_, _audio_pre_new
-from MDXNet import MDXNetDereverb
-from infer.lib.audio import load_audio
 
 
 from sklearn.cluster import MiniBatchKMeans
@@ -387,75 +384,101 @@ def audio_combined(audio1_path, audio2_path, volume_factor_audio1=1.0, volume_fa
 def uvr(model_name, inp_root, save_root_vocal, paths, save_root_ins, agg, format0,architecture):
     infos = []
     if architecture == "VR":
-       try:
-           inp_root, save_root_vocal, save_root_ins = [x.strip(" ").strip('"').strip("\n").strip('"').strip(" ") for x in [inp_root, save_root_vocal, save_root_ins]]
-           usable_files = [os.path.join(inp_root, file) 
-                          for file in os.listdir(inp_root) 
-                          if file.endswith(tuple(sup_audioext))]    
-           
-        
-           pre_fun = MDXNetDereverb(15) if model_name == "onnx_dereverb_By_FoxJoy" else (_audio_pre_ if "DeEcho" not in model_name else _audio_pre_new)(
-                       agg=int(agg),
-                       model_path=os.path.join(weight_uvr5_root, model_name + ".pth"),
-                       device=config.device,
-                       is_half=config.is_half,
-                   )
-                
-           try:
-              if paths != None:
+        try:
+            infos.append(i18n("Starting audio conversion... (This might take a moment)"))
+            inp_root = inp_root.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
+            save_root_vocal = (
+                save_root_vocal.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
+            )
+            save_root_ins = (
+                save_root_ins.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
+            )
+            usable_files = [
+                os.path.join(inp_root, file)
+                for file in os.listdir(inp_root)
+                if file.endswith(tuple(sup_audioext))
+            ]
+            if model_name == "onnx_dereverb_By_FoxJoy":
+                pre_fun = MDXNetDereverb(15, config.device)
+            else:
+                func = AudioPre if "DeEcho" not in model_name else AudioPreDeEcho
+                pre_fun = func(
+                    agg=int(agg),
+                    model_path=os.path.join(
+                        os.getenv("weight_uvr5_root"), model_name + ".pth"
+                   ),
+                    device=config.device,
+                    is_half=config.is_half,
+                )
+            if inp_root != "":
+                paths = usable_files
+            else:
                 paths = [path.name for path in paths]
-              else:
-                paths = usable_files
-                
-           except:
+            for path in paths:
+                inp_path = os.path.join(inp_root, path)
+                need_reformat = 1
+                done = 0
+                try:
+                    info = ffmpeg.probe(inp_path, cmd="ffprobe")
+                    if (
+                        info["streams"][0]["channels"] == 2
+                    and info["streams"][0]["sample_rate"] == "44100"
+                    ):
+                        need_reformat = 0
+                        pre_fun._path_audio_(
+                            inp_path, save_root_ins, save_root_vocal, format0
+                        )
+                        done = 1
+                except:
+                    need_reformat = 1
+                    traceback.print_exc()
+                if need_reformat == 1:
+                    tmp_path = "%s/%s.reformatted.wav" % (
+                        os.path.join(os.environ["TEMP"]),
+                        os.path.basename(inp_path),
+                    )
+                    os.system(
+                        "ffmpeg -i %s -vn -acodec pcm_s16le -ac 2 -ar 44100 %s -y"
+                        % (inp_path, tmp_path)
+                    )
+                    inp_path = tmp_path
+                try:
+                    if done == 0:
+                        pre_fun.path_audio(
+                            inp_path, save_root_ins, save_root_vocal, format0
+                        )
+                    infos.append("%s->Success" % (os.path.basename(inp_path)))
+                    yield "\n".join(infos)
+                except:
+                    try:
+                        if done == 0:
+                            pre_fun._path_audio_(
+                                inp_path, save_root_ins, save_root_vocal, format0
+                            )
+                        infos.append("%s->Success" % (os.path.basename(inp_path)))
+                        yield "\n".join(infos)
+                    except:
+                        infos.append(
+                            "%s->%s" % (os.path.basename(inp_path), traceback.format_exc())
+                        )
+                        yield "\n".join(infos)
+        except:
+            infos.append(traceback.format_exc())
+            yield "\n".join(infos)
+        finally:
+            try:
+                if model_name == "onnx_dereverb_By_FoxJoy":
+                    del pre_fun.pred.model
+                    del pre_fun.pred.model_
+                else:
+                    del pre_fun.model
+                    del pre_fun
+            except:
                 traceback.print_exc()
-                paths = usable_files
-           print(paths) 
-           for path in paths:
-               inp_path = os.path.join(inp_root, path)
-               need_reformat, done = 1, 0
-
-               try:
-                   info = ffmpeg.probe(inp_path, cmd="ffprobe")
-                   if info["streams"][0]["channels"] == 2 and info["streams"][0]["sample_rate"] == "44100":
-                       need_reformat = 0
-                       pre_fun._path_audio_(inp_path, save_root_ins, save_root_vocal, format0)
-                       done = 1
-               except:
-                   traceback.print_exc()
-
-               if need_reformat:
-                   tmp_path = f"{tmp}/{os.path.basename(RQuote(inp_path))}.reformatted.wav"
-                   os.system(f"ffmpeg -i {RQuote(inp_path)} -vn -acodec pcm_s16le -ac 2 -ar 44100 {RQuote(tmp_path)} -y")
-                   inp_path = tmp_path
-
-               try:
-                   if not done:
-                       pre_fun._path_audio_(inp_path, save_root_ins, save_root_vocal, format0)
-                   infos.append(f"{os.path.basename(inp_path)}->Success")
-                   yield "\n".join(infos)
-               except:
-                   infos.append(f"{os.path.basename(inp_path)}->{traceback.format_exc()}")
-                   yield "\n".join(infos)
-       except:
-           infos.append(traceback.format_exc())
-           yield "\n".join(infos)
-       finally:
-           try:
-               if model_name == "onnx_dereverb_By_FoxJoy":
-                   del pre_fun.pred.model
-                   del pre_fun.pred.model_
-               else:
-                   del pre_fun.model
-
-               del pre_fun
-           except: traceback.print_exc()
-
-           print("clean_empty_cache")
-
-           if torch.cuda.is_available(): torch.cuda.empty_cache()
-
-       yield "\n".join(infos)
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.info("Executed torch.cuda.empty_cache()")
+        yield "\n".join(infos)
     elif architecture == "MDX":
        try:
            infos.append(i18n("Starting audio conversion... (This might take a moment)"))
@@ -1598,60 +1621,52 @@ def switch_pitch_controls(f0method0):
             {"visible": False, "__type__": "update"}
         )
 
-def match_index(sid0):
-    picked = False
-    # folder = sid0.split('.')[0]
+def match_index(sid0: str) -> tuple:
+    sid0strip = re.sub(r"\.pth|\.onnx$", "", sid0)
+    sid0name = os.path.split(sid0strip)[-1]  # Extract only the name, not the directory
 
-    # folder = re.split(r'. |_', sid0)[0]
-    folder = sid0.split(".")[0].split("_")[0]
-    # folder_test = sid0.split('.')[0].split('_')[0].split('-')[0]
-    parent_dir = "./logs/" + folder
-    # print(parent_dir)
-    if os.path.exists(parent_dir):
-        # print('path exists')
-        for filename in os.listdir(parent_dir.replace("\\", "/")):
-            if filename.endswith(".index"):
-                for i in range(len(indexes_list)):
-                    if indexes_list[i] == (
-                        os.path.join(("./logs/" + folder), filename).replace("\\", "/")
-                    ):
-                        # print('regular index found')
-                        break
-                    else:
-                        if indexes_list[i] == (
-                            os.path.join(
-                                ("./logs/" + folder.lower()), filename
-                            ).replace("\\", "/")
-                        ):
-                            # print('lowered index found')
-                            parent_dir = "./logs/" + folder.lower()
-                            break
-                        # elif (indexes_list[i]).casefold() == ((os.path.join(("./logs/" + folder), filename).replace('\\','/')).casefold()):
-                        #    print('8')
-                        #    parent_dir = "./logs/" + folder.casefold()
-                        #    break
-                        # elif (indexes_list[i]) == ((os.path.join(("./logs/" + folder_test), filename).replace('\\','/'))):
-                        #    parent_dir = "./logs/" + folder_test
-                        #    print(parent_dir)
-                        #    break
-                        # elif (indexes_list[i]) == (os.path.join(("./logs/" + folder_test.lower()), filename).replace('\\','/')):
-                        #    parent_dir = "./logs/" + folder_test
-                        #    print(parent_dir)
-                        #    break
-                        # else:
-                        #    #print('couldnt find index')
-                        #    continue
-
-                # print('all done')
-                index_path = os.path.join(
-                    parent_dir.replace("\\", "/"), filename.replace("\\", "/")
-                ).replace("\\", "/")
-                # print(index_path)
-                return (index_path, index_path)
-
+    # Check if the sid0strip has the specific ending format _eXXX_sXXX
+    if re.match(r".+_e\d+_s\d+$", sid0name):
+        base_model_name = sid0name.rsplit("_", 2)[0]
     else:
-        # print('nothing found')
-        return ("", "")
+        base_model_name = sid0name
+
+    sid_directory = os.path.join(index_root, base_model_name)
+    directories_to_search = [sid_directory] if os.path.exists(sid_directory) else []
+    directories_to_search.append(index_root)
+
+    matching_index_files = []
+
+    for directory in directories_to_search:
+        for filename in os.listdir(directory):
+            if filename.endswith(".index") and "trained" not in filename:
+                # Condition to match the name
+                name_match = any(
+                    name.lower() in filename.lower()
+                    for name in [sid0name, base_model_name]
+                )
+
+                # If in the specific directory, it's automatically a match
+                folder_match = directory == sid_directory
+
+                if name_match or folder_match:
+                    index_path = os.path.join(directory, filename)
+                    if index_path in indexes_list:
+                        matching_index_files.append(
+                            (
+                                index_path,
+                                os.path.getsize(index_path),
+                                " " not in filename,
+                            )
+                        )
+
+    if matching_index_files:
+        # Sort by favoring files without spaces and by size (largest size first)
+        matching_index_files.sort(key=lambda x: (-x[2], -x[1]))
+        best_match_index_path = matching_index_files[0][0]
+        return best_match_index_path, best_match_index_path
+
+    return "", ""
 
 def stoptraining(mim):
     if int(mim) == 1:
@@ -1717,9 +1732,6 @@ def save_to_wav2(dropbox):
 from gtts import gTTS
 import edge_tts
 import asyncio
-
-
-
 
 def custom_voice(
         _values, # filter indices
@@ -1804,9 +1816,6 @@ def __bark__(text, voice_preset):
     sampling_rate = bark_model.generation_config.sample_rate
     speech = speech_values.cpu().numpy().squeeze()
     return speech, sampling_rate
-
-
-
 def make_test( 
         tts_text, 
         tts_voice, 
@@ -1907,11 +1916,7 @@ def make_test(
             except Exception as e:
                 print(f"{e}")
                 return None, None  
-            
 
-
-        
-        
 
 def GradioSetup(UTheme=gr.themes.Soft()):
 
@@ -1966,7 +1971,9 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                 record_button.change(fn=save_to_wav, inputs=[record_button], outputs=[input_audio0])
                                 record_button.change(fn=easy_infer.change_choices2, inputs=[], outputs=[input_audio1])
 
-                            best_match_index_path1 = match_index(sid0.value) # Get initial index from default sid0 (first voice model in list)
+                            best_match_index_path1, _ = match_index(
+                                sid0.value
+                            )  # Get initial index from default sid0 (first voice model in list)
 
                             with gr.Column(): # Second column for pitch shift and other options
                                 file_index2 = gr.Dropdown(
@@ -2750,10 +2757,10 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                 visible=False,
                             )
                             opt_vocal_root = gr.Textbox(
-                                label=i18n("Specify the output folder for vocals:"), value="opt"
+                                label=i18n("Specify the output folder for vocals:"), value="audios"
                             )
                             opt_ins_root = gr.Textbox(
-                                label=i18n("Specify the output folder for accompaniment:"), value="opt"
+                                label=i18n("Specify the output folder for accompaniment:"), value="audio-others"
                             )
                             format0 = gr.Radio(
                                 label=i18n("Export file format:"),
@@ -2802,7 +2809,9 @@ def GradioSetup(UTheme=gr.themes.Soft()):
 
                         with gr.Column():
                              model_voice_path07 = gr.Dropdown(label=i18n('RVC Model:'), choices=sorted(names), value=default_weight)
-                             best_match_index_path1 = match_index(model_voice_path07.value)    
+                             best_match_index_path1, _ = match_index(
+                                model_voice_path07.value
+                             )
                              
                              file_index2_07 = gr.Dropdown(
                                   label=i18n('Select the .index file:'),
