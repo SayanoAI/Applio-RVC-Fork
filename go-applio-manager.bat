@@ -173,7 +173,7 @@ echo.
 cls
 
 echo Downloading the rest of the large files
-
+cd "assets"
 echo Downloading the "uvr5_weights" folder...
 cd "uvr5_weights"
 curl -LJO "%URL_BASE%/uvr5_weights/HP2_all_vocals.pth"
@@ -182,6 +182,7 @@ curl -LJO "%URL_BASE%/uvr5_weights/HP5_only_main_vocal.pth"
 curl -LJO "%URL_BASE%/uvr5_weights/VR-DeEchoAggressive.pth"
 curl -LJO "%URL_BASE%/uvr5_weights/VR-DeEchoDeReverb.pth"
 curl -LJO "%URL_BASE%/uvr5_weights/VR-DeEchoNormal.pth"
+cd ".."
 cd ".."
 echo.
 cls
