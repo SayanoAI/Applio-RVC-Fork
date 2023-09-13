@@ -39,7 +39,6 @@ import datetime
 from glob import glob1
 import signal
 from signal import SIGTERM
-import librosa
 
 from configs.config import Config
 from i18n import I18nAuto
@@ -58,31 +57,18 @@ math = lazyload('math')
 ffmpeg = lazyload('ffmpeg')
 import nltk
 nltk.download('punkt', quiet=True)
-from nltk.tokenize import sent_tokenize
-from bark import SAMPLE_RATE
 
-import easy_infer
-import audioEffects
+import tabs.resources as resources
+import tabs.tts as tts
+import tabs.merge as mergeaudios
+import tabs.processing as processing
+
 from infer.lib.csvutil import CSVutil
-
-from lib.infer_pack.models import (
-    SynthesizerTrnMs256NSFsid,
-    SynthesizerTrnMs256NSFsid_nono,
-    SynthesizerTrnMs768NSFsid,
-    SynthesizerTrnMs768NSFsid_nono,
-)
 from lib.infer_pack.models_onnx import SynthesizerTrnMsNSFsidM
-
-
 from sklearn.cluster import MiniBatchKMeans
-
 import time
 import csv
-
 from shlex import quote as SQuote
-
-
-
 
 RQuote = lambda val: SQuote(str(val))
 
@@ -252,7 +238,7 @@ check_for_name = lambda: sorted(names)[0] if names else ''
 datasets=[]
 for foldername in os.listdir(os.path.join(now_dir, datasets_root)):
     if "." not in foldername:
-        datasets.append(os.path.join(easy_infer.find_folder_parent(".","pretrained"),"datasets",foldername))
+        datasets.append(os.path.join(resources.find_folder_parent(".","pretrained"),"datasets",foldername))
 
 def get_dataset():
     if len(datasets) > 0:
@@ -268,22 +254,14 @@ def update_model_choices(select_value):
     elif select_value == "MDX":
         return {"choices": model_ids_list, "__type__": "update"}
 
-set_bark_voice = easy_infer.get_bark_voice()
-set_edge_voice = easy_infer.get_edge_voice()
 
-def update_tts_methods_voice(select_value):
-    #["Edge-tts", "RVG-tts", "Bark-tts"]
-    if select_value == "Edge-tts":
-        return {"choices": set_edge_voice, "value": "", "__type__": "update"}
-    elif select_value == "Bark-tts":
-        return {"choices": set_bark_voice, "value": "", "__type__": "update"}
     
 
 def update_dataset_list(name):
     new_datasets = []
     for foldername in os.listdir(os.path.join(now_dir, datasets_root)):
         if "." not in foldername:
-            new_datasets.append(os.path.join(easy_infer.find_folder_parent(".","pretrained"),"datasets",foldername))
+            new_datasets.append(os.path.join(resources.find_folder_parent(".","pretrained"),"datasets",foldername))
     return gr.Dropdown.update(choices=new_datasets)
 
 def get_indexes():
@@ -305,80 +283,6 @@ def get_fshift_presets():
     ]
     
     return fshift_presets_list if fshift_presets_list else ''
-
-import soundfile as sf
-
-def generate_output_path(output_folder, base_name, extension):
-    # Generar un nombre único para el archivo de salida
-    index = 1
-    while True:
-        output_path = os.path.join(output_folder, f"{base_name}_{index}.{extension}")
-        if not os.path.exists(output_path):
-            return output_path
-        index += 1
-
-def combine_and_save_audios(audio1_path, audio2_path, output_path, volume_factor_audio1, volume_factor_audio2):
-    audio1, sr1 = librosa.load(audio1_path, sr=None)
-    audio2, sr2 = librosa.load(audio2_path, sr=None)
-
-    # Alinear las tasas de muestreo
-    if sr1 != sr2:
-        if sr1 > sr2:
-            audio2 = librosa.resample(audio2, orig_sr=sr2, target_sr=sr1)
-        else:
-            audio1 = librosa.resample(audio1, orig_sr=sr1, target_sr=sr2)
-
-    # Ajustar los audios para que tengan la misma longitud
-    target_length = min(len(audio1), len(audio2))
-    audio1 = librosa.util.fix_length(audio1, target_length)
-    audio2 = librosa.util.fix_length(audio2, target_length)
-
-    # Ajustar el volumen de los audios multiplicando por el factor de ganancia
-    if volume_factor_audio1 != 1.0:
-        audio1 *= volume_factor_audio1
-    if volume_factor_audio2 != 1.0:
-        audio2 *= volume_factor_audio2
-
-    # Combinar los audios
-    combined_audio = audio1 + audio2
-
-    sf.write(output_path, combined_audio, sr1)
-
-# Resto de tu código...
-
-# Define función de conversión llamada por el botón
-def audio_combined(audio1_path, audio2_path, volume_factor_audio1=1.0, volume_factor_audio2=1.0, reverb_enabled=False, compressor_enabled=False, noise_gate_enabled=False):
-    output_folder = os.path.join(now_dir, "audio-outputs")
-    os.makedirs(output_folder, exist_ok=True)
-
-    # Generar nombres únicos para los archivos de salida
-    base_name = "combined_audio"
-    extension = "wav"
-    output_path = generate_output_path(output_folder, base_name, extension)
-    print(reverb_enabled)
-    print(compressor_enabled)
-    print(noise_gate_enabled)
-
-    if reverb_enabled or compressor_enabled or noise_gate_enabled:
-        # Procesa el primer audio con los efectos habilitados
-        base_name = "effect_audio"
-        output_path = generate_output_path(output_folder, base_name, extension)
-        processed_audio_path = audioEffects.process_audio(audio2_path, output_path, reverb_enabled, compressor_enabled, noise_gate_enabled)
-        base_name = "combined_audio"
-        output_path = generate_output_path(output_folder, base_name, extension)
-        # Combina el audio procesado con el segundo audio usando audio_combined
-        combine_and_save_audios(audio1_path, processed_audio_path, output_path, volume_factor_audio1, volume_factor_audio2)
-        
-        return i18n("Conversion complete!"), output_path
-    else:
-        base_name = "combined_audio"
-        output_path = generate_output_path(output_folder, base_name, extension)
-        # No hay efectos habilitados, combina directamente los audios sin procesar
-        combine_and_save_audios(audio1_path, audio2_path, output_path, volume_factor_audio1, volume_factor_audio2)
-        
-        return i18n("Conversion complete!"), output_path
-
-
 
 
 def uvr(model_name, inp_root, save_root_vocal, paths, save_root_ins, agg, format0,architecture):
@@ -579,16 +483,7 @@ def change_choices2():
         {"choices": sorted(names), "__type__": "update"}, 
         {"choices": sorted(indexes_list), "__type__": "update"}, 
     )
-def change_choices3():
-    
-    audio_paths  = [os.path.join(audio_root, file) for file in os.listdir(os.path.join(now_dir, "audios"))]
-    audio_others_paths  = [os.path.join(audio_others_root, file) for file in os.listdir(os.path.join(now_dir, "audio-others"))]
-    
 
-    return (
-        {"choices": sorted(audio_others_paths), "__type__": "update"},
-        {"choices": sorted(audio_paths), "__type__": "update"}
-    )
 
 def clean():
     return {"value": "", "__type__": "update"}
@@ -1197,52 +1092,12 @@ def change_info_(ckpt_path):
 
 F0GPUVisible = config.dml == False
 
-
 def change_f0_method(f0method8):
     if f0method8 == "rmvpe_gpu":
         visible = F0GPUVisible
     else:
         visible = False
     return {"visible": visible, "__type__": "update"}
-
-
-
-def export_onnx(model_path, exported_path):
-    device = torch.device("cpu")
-    checkpoint = torch.load(model_path, map_location=device)
-    vec_channels = 256 if checkpoint.get("version", "v1") == "v1" else 768
-    
-    test_inputs = {
-        "phone": torch.rand(1, 200, vec_channels),
-        "phone_lengths": torch.LongTensor([200]),
-        "pitch": torch.randint(5, 255, (1, 200)),
-        "pitchf": torch.rand(1, 200),
-        "ds": torch.zeros(1).long(),
-        "rnd": torch.rand(1, 192, 200)
-    }
-    
-    checkpoint["config"][-3] = checkpoint["weight"]["emb_g.weight"].shape[0]
-    net_g = SynthesizerTrnMsNSFsidM(*checkpoint["config"], is_half=False, version=checkpoint.get("version", "v1"))
-    
-    net_g.load_state_dict(checkpoint["weight"], strict=False)
-    net_g = net_g.to(device)
-
-    dynamic_axes = {"phone": [1], "pitch": [1], "pitchf": [1], "rnd": [2]}
-
-    torch.onnx.export(
-        net_g,
-        tuple(value.to(device) for value in test_inputs.values()),
-        exported_path,
-        dynamic_axes=dynamic_axes,
-        do_constant_folding=False,
-        opset_version=13,
-        verbose=False,
-        input_names=list(test_inputs.keys()),
-        output_names=["audio"],
-    )
-    return "Finished"
-
-
 
 import re as regex
 import scipy.io.wavfile as wavfile
@@ -1600,9 +1455,6 @@ if config.is_cli:
     cli_navigation_loop()
 
 
-
-
-
 def switch_pitch_controls(f0method0):
     is_visible = f0method0 != 'rmvpe'
 
@@ -1728,194 +1580,6 @@ def save_to_wav2(dropbox):
 
     shutil.move(file_path, target_path)
     return target_path
-    
-from gtts import gTTS
-import edge_tts
-import asyncio
-
-def custom_voice(
-        _values, # filter indices
-        audio_files, # all audio files
-        model_voice_path='',
-        transpose=0,
-        f0method='pm',
-        index_rate_=float(0.66),
-        crepe_hop_length_=float(64),
-        f0_autotune=False,
-        file_index='',
-        file_index2='',
-        ):
-
-        vc.get_vc(model_voice_path)
-
-
-        for _value_item in _values:
-            filename = "audio2/"+audio_files[_value_item] if _value_item != "converted_tts" else audio_files[0]
-            #filename = "audio2/"+audio_files[_value_item]
-            try:
-                print(audio_files[_value_item], model_voice_path)
-            except:
-                pass
-            info_, (sample_, audio_output_) = vc.vc_single_dont_save(
-                sid=0,
-                input_audio_path0=filename, #f"audio2/{filename}",
-                input_audio_path1=filename, #f"audio2/{filename}",
-                f0_up_key=transpose, # transpose for m to f and reverse 0 12
-                f0_file=None,
-                f0_method= f0method,
-                file_index= file_index, # dir pwd?
-                file_index2= file_index2,
-                # file_big_npy1,
-                index_rate= index_rate_,
-                filter_radius= int(3),
-                resample_sr= int(0),
-                rms_mix_rate= float(0.25),
-                protect= float(0.33),
-                crepe_hop_length= crepe_hop_length_,
-                f0_autotune=f0_autotune,
-                f0_min=50,
-                note_min=50,
-                f0_max=1100,
-                note_max=1100
-            )
-
-            sf.write(
-                file= filename, #f"audio2/{filename}",
-                samplerate=sample_,
-                data=audio_output_
-            )
-def cast_to_device(tensor, device):
-    try:
-        return tensor.to(device)
-    except Exception as e:
-        print(e)
-        return tensor
-
-
-def __bark__(text, voice_preset):
-    os.makedirs(os.path.join(now_dir,"tts"), exist_ok=True)
-    from transformers import AutoProcessor, BarkModel
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    dtype = torch.float32 if "cpu" in device else torch.float16
-    bark_processor = AutoProcessor.from_pretrained(
-        "suno/bark",
-        cache_dir=os.path.join(now_dir,"tts","suno/bark"),
-        torch_dtype=dtype)
-    bark_model = BarkModel.from_pretrained(
-        "suno/bark",
-        cache_dir=os.path.join(now_dir,"tts","suno/bark"),
-        torch_dtype=dtype).to(device)
-    # bark_model.enable_cpu_offload()
-    inputs = bark_processor(
-    text=[text],
-    return_tensors="pt",
-    voice_preset=voice_preset
-    )
-    tensor_dict = {k: cast_to_device(v,device) if hasattr(v,"to") else v for k, v in inputs.items()}
-    speech_values = bark_model.generate(**tensor_dict, do_sample=True)
-    sampling_rate = bark_model.generation_config.sample_rate
-    speech = speech_values.cpu().numpy().squeeze()
-    return speech, sampling_rate
-def make_test( 
-        tts_text, 
-        tts_voice, 
-        model_path,
-        index_path,
-        transpose,
-        f0_method,
-        index_rate,
-        crepe_hop_length,
-        f0_autotune,
-        tts_method
-        ):
-
-        if tts_voice == None:
-            return
-        
-        filename = os.path.join(now_dir, "audio-outputs", "converted_tts.wav")
-        if "SET_LIMIT" == os.getenv("DEMO"):
-          if len(tts_text) > 60:
-            tts_text = tts_text[:60]
-            print("DEMO; limit to 60 characters")
-
-        language = tts_voice[:2]
-        if tts_method == "Edge-tts":
-            try:
-                #nest_asyncio.apply() # gradio;not
-                asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save(filename))
-            except:
-               try:
-                  tts = gTTS(tts_text, lang=language)
-                  tts.save(filename)
-                  tts.save
-                  print(f'No audio was received. Please change the tts voice for {tts_voice}. USING gTTS.')
-               except:
-                tts = gTTS('a', lang=language)
-                tts.save(filename)
-                print('Error: Audio will be replaced.')
-    
-            os.system("cp audio-outputs/converted_tts.wav audio-outputs/real_tts.wav")
-
-            custom_voice(
-                ["converted_tts"], # filter indices
-                ["audio-outputs/converted_tts.wav"], # all audio files
-                model_voice_path=model_path,
-                transpose=transpose,
-                f0method=f0_method,
-                index_rate_=index_rate,
-                crepe_hop_length_=crepe_hop_length,
-                f0_autotune=f0_autotune,
-                file_index='',
-                file_index2=index_path,
-            )
-            return os.path.join(now_dir, "audio-outputs", "converted_tts.wav"), os.path.join(now_dir, "audio-outputs", "real_tts.wav")
-        elif tts_method == "Bark-tts":
-            try:
-                
-                script = tts_text.replace("\n", " ").strip()
-                sentences = sent_tokenize(script)
-                print(sentences)
-                silence = np.zeros(int(0.25 * SAMPLE_RATE))
-                pieces = []
-                nombre_archivo = os.path.join(now_dir, "audio-outputs", "bark_out.wav")
-                for sentence in sentences:
-                    audio_array , _ = __bark__(sentence, tts_voice.split("-")[0])
-                    pieces += [audio_array, silence.copy()]
-            
-                sf.write(
-                    file= nombre_archivo,
-                    samplerate=SAMPLE_RATE,
-                    data=np.concatenate(pieces)
-                )
-                vc.get_vc(model_path)
-                info_, (sample_, audio_output_) = vc.vc_single_dont_save(
-                    sid=0,
-                    input_audio_path0=os.path.join(now_dir, "audio-outputs", "bark_out.wav"), #f"audio2/{filename}",
-                    input_audio_path1=os.path.join(now_dir, "audio-outputs", "bark_out.wav"), #f"audio2/{filename}",
-                    f0_up_key=transpose, # transpose for m to f and reverse 0 12
-                    f0_file=None,
-                    f0_method=f0_method,
-                    file_index= '', # dir pwd?
-                    file_index2= index_path,
-                    # file_big_npy1,
-                    index_rate= index_rate,
-                    filter_radius= int(3),
-                    resample_sr= int(0),
-                    rms_mix_rate= float(0.25),
-                    protect= float(0.33),
-                    crepe_hop_length= crepe_hop_length,
-                    f0_autotune=f0_autotune,
-                    f0_min=50,
-                    note_min=50,
-                    f0_max=1100,
-                    note_max=1100
-                )
-                wavfile.write(os.path.join(now_dir, "audio-outputs", "converted_bark.wav"), rate=sample_, data=audio_output_)
-                return os.path.join(now_dir, "audio-outputs", "converted_bark.wav"), nombre_archivo
-
-            except Exception as e:
-                print(f"{e}")
-                return None, None  
 
 
 def GradioSetup(UTheme=gr.themes.Soft()):
@@ -1967,9 +1631,9 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                 input_audio0.input(fn=lambda:'',inputs=[],outputs=[input_audio1])
                                 
                                 dropbox.upload(fn=save_to_wav2, inputs=[dropbox], outputs=[input_audio0])
-                                dropbox.upload(fn=easy_infer.change_choices2, inputs=[], outputs=[input_audio1])
+                                dropbox.upload(fn=resources.change_choices2, inputs=[], outputs=[input_audio1])
                                 record_button.change(fn=save_to_wav, inputs=[record_button], outputs=[input_audio0])
-                                record_button.change(fn=easy_infer.change_choices2, inputs=[], outputs=[input_audio1])
+                                record_button.change(fn=resources.change_choices2, inputs=[], outputs=[input_audio1])
 
                             best_match_index_path1, _ = match_index(
                                 sid0.value
@@ -2472,7 +2136,7 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                 interactive=True,
                             )
                             btn_update_dataset_list.click(
-                            easy_infer.update_dataset_list, [spk_id5], trainset_dir4
+                            resources.update_dataset_list, [spk_id5], trainset_dir4
                             )
                             but1 = gr.Button(i18n("Process data"), variant="primary")
                             info1 = gr.Textbox(label=i18n("Output information:"), value="")
@@ -2681,7 +2345,7 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                             )
                                 
                             but4.click(train_index, [exp_dir1, version19], info3)
-                            but7.click(easy_infer.save_model, [exp_dir1, save_action], info3)
+                            but7.click(resources.save_model, [exp_dir1, save_action], info3)
                 with gr.Group():
                     with gr.Row():
                         with gr.Accordion(label=i18n("Step 5: Export lowest points on a graph of the model")):
@@ -2800,9 +2464,9 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                         with gr.Column(): 
                              tts_methods_voice = ["Edge-tts", "Bark-tts"]
                              ttsmethod_test = gr.Dropdown(tts_methods_voice, value='Edge-tts', label = i18n('TTS Method:'), visible=True)    
-                             tts_test = gr.Dropdown(set_edge_voice, label = i18n('TTS Model:'), visible=True)
+                             tts_test = gr.Dropdown(tts.set_edge_voice, label = i18n('TTS Model:'), visible=True)
                              ttsmethod_test.change(
-                            fn=update_tts_methods_voice,
+                            fn=tts.update_tts_methods_voice,
                             inputs=ttsmethod_test,
                             outputs=tts_test,
                             )
@@ -2819,12 +2483,7 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                   value=best_match_index_path1,
                                   interactive=True,
                                   allow_custom_value=True,
-                                )
-                             #transpose_test = gr.Number(label = i18n('Transpose (integer, number Fof semitones, raise by an octave: 12, lower by an octave: -12):'), value=0, visible=True, interactive= True)
-              
-                        
-                                   
-                
+                                )       
                 with gr.Row():
                         refresh_button_ = gr.Button(i18n("Refresh"), variant="primary")
                         refresh_button_.click(fn=change_choices2, inputs=[], outputs=[model_voice_path07, file_index2_07]) 
@@ -2835,8 +2494,7 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                 with gr.Row():
                         button_test = gr.Button(i18n("Convert"), variant="primary")
                        
-
-                button_test.click(make_test, inputs=[
+                button_test.click(tts.use_tts, inputs=[
                                 text_test,
                                 tts_test,
                                 model_voice_path07,
@@ -2851,242 +2509,22 @@ def GradioSetup(UTheme=gr.themes.Soft()):
                                 ], outputs=[ttsvoice, original_ttsvoice])
             
             with gr.TabItem(i18n("Resources")):
-                easy_infer.download_model()
-                easy_infer.download_backup()
-                easy_infer.download_dataset(trainset_dir4)
-                easy_infer.download_audio()
-                easy_infer.youtube_separator()
+                resources.download_model()
+                resources.download_backup()
+                resources.download_dataset(trainset_dir4)
+                resources.download_audio()
+                resources.youtube_separator()
             with gr.TabItem(i18n("Extra")):
                 gr.Markdown(
                             value=i18n("This section contains some extra utilities that often may be in experimental phases")
                 )
                 with gr.TabItem(i18n("Merge Audios")):
-                    with gr.Group(): 
-                        gr.Markdown(
-                            value="## " + i18n("Merge your generated audios with the instrumental")
-                        )
-                        gr.Markdown(value="",scale="-0.5",visible=True)
-                        gr.Markdown(value="",scale="-0.5",visible=True)
-                        with gr.Row():
-                            with gr.Column():
-                                dropbox = gr.File(label=i18n("Drag your audio here:"))
-                                gr.Markdown(value=i18n("### Instrumental settings:"))
-                                input_audio1 = gr.Dropdown(
-                                    label=i18n("Choose your instrumental:"),
-                                    choices=sorted(audio_others_paths),
-                                    value='',
-                                    interactive=True,
-                                )
-                                input_audio1_scale = gr.Slider(
-                                    minimum=0,
-                                    maximum=10,
-                                    label=i18n("Volume of the instrumental audio:"),
-                                    value=1.00,
-                                    interactive=True,
-                                )
-                                gr.Markdown(value=i18n("### Audio settings:"))
-                                input_audio3 = gr.Dropdown(
-                                    label=i18n("Select the generated audio"),
-                                    choices=sorted(audio_paths),
-                                    value='',
-                                    interactive=True,
-                                )
-                                with gr.Row():
-                                    input_audio3_scale = gr.Slider(
-                                        minimum=0,
-                                        maximum=10,
-                                        label=i18n("Volume of the generated audio:"),
-                                        value=1.00,
-                                        interactive=True,
-                                    )
-
-                                gr.Markdown(value=i18n("### Add the effects:"))
-                                reverb_ = gr.Checkbox(
-                                label=i18n("Reverb"),
-                                value=False,
-                                interactive=True,
-                                )
-                                compressor_ = gr.Checkbox(
-                                label=i18n("Compressor"),
-                                value=False,
-                                interactive=True,
-                                )
-                                noise_gate_ = gr.Checkbox(
-                                label=i18n("Noise Gate"),
-                                value=False,
-                                interactive=True,
-                                )
-
-                                butnone = gr.Button(i18n("Merge"), variant="primary").style(full_width=True)
-                                
-                                vc_output1 = gr.Textbox(label=i18n("Output information:"))
-                                vc_output2 = gr.Audio(label=i18n("Export audio (click on the three dots in the lower right corner to download)"), type='filepath')
-                                
-                                dropbox.upload(fn=save_to_wav2, inputs=[dropbox], outputs=[input_audio1])
-                                dropbox.upload(fn=easy_infer.change_choices2, inputs=[], outputs=[input_audio1])
-
-                                refresh_button.click(
-                                    fn=lambda: change_choices3(),
-                                    inputs=[],
-                                    outputs=[input_audio1, input_audio3],
-                                )
-                                
-                                butnone.click(
-                                    fn=audio_combined,
-                                    inputs=[input_audio1, input_audio3,input_audio1_scale,input_audio3_scale,reverb_,compressor_,noise_gate_], 
-                                    outputs=[vc_output1, vc_output2]
-                                    )
+                    mergeaudios.merge_audios()
                                     
                         
                 with gr.TabItem(i18n("Processing")):
-                    with gr.Group():
-                      
-                        with gr.Accordion(label=i18n("Model fusion, can be used to test timbre fusion")):
-                            with gr.Row():
-                                with gr.Column():
-                                    name_to_save0 = gr.Textbox(
-                                        label=i18n("Name:"),
-                                        value="",
-                                        max_lines=1,
-                                        interactive=True,
-                                        placeholder=i18n("Name for saving")
-                                    )
-                                    alpha_a = gr.Slider(
-                                        minimum=0,
-                                        maximum=1,
-                                        label=i18n("Weight for Model A:"),
-                                        value=0.5,
-                                        interactive=True,
-                                    )
-                                    if_f0_ = gr.Checkbox(
-                                    label=i18n("Whether the model has pitch guidance."),
-                                    value=True,
-                                    interactive=True,
-                                    )
-                                    version_2 = gr.Radio(
-                                    label=i18n("Model architecture version:"),
-                                    choices=["v1", "v2"],
-                                    value="v2",
-                                    interactive=True,
-                                )
-                                    sr_ = gr.Radio(
-                                    label=i18n("Target sample rate:"),
-                                    choices=["40k", "48k"],
-                                    value="40k",
-                                    interactive=True,
-                                )
-                                
-                
-                                with gr.Column():
-                                    ckpt_a = gr.Textbox(label=i18n("Path to Model A:"), value="", interactive=True, placeholder=i18n("Path to model"))
-                                
-                                    ckpt_b = gr.Textbox(label=i18n("Path to Model B:"), value="", interactive=True, placeholder=i18n("Path to model"))
-                                
-                                    info__ = gr.Textbox(
-                                        label=i18n("Model information to be placed:"), value="", max_lines=8, interactive=True, placeholder=i18n("Model information to be placed")
-                                    )
-                                    info4 = gr.Textbox(label=i18n("Output information:"), value="", max_lines=8)                               
-                                
-                           
-                            but6 = gr.Button(i18n("Fusion"), variant="primary")
-                                
-                            but6.click(
-                                merge,
-                                [
-                                    ckpt_a,
-                                    ckpt_b,
-                                    alpha_a,
-                                    sr_,
-                                    if_f0_,
-                                    info__,
-                                    name_to_save0,
-                                    version_2,
-                                ],
-                                info4,
-                            )  # def merge(path1,path2,alpha1,sr,f0,info):
-                    with gr.Group():
-                        with gr.Accordion(label=i18n("Modify model information")):
-                            with gr.Row(): ######
-                                with gr.Column():
-                                    ckpt_path0 = gr.Textbox(
-                                        label=i18n("Path to Model:"), value="", interactive=True, placeholder=i18n("Path to model")
-                                    )
-                                    info_ = gr.Textbox(
-                                        label=i18n("Model information to be modified:"), value="", max_lines=8, interactive=True,  placeholder=i18n("Model information to be placed")
-                                    )
-                                
-                                with gr.Column():
-                                    name_to_save1 = gr.Textbox(
-                                        label=i18n("Save file name:"),
-                                        placeholder=i18n("Name for saving"),
-                                        value="",
-                                        max_lines=8,
-                                        interactive=True,
-                                        
-                                    )
-                                    
-                                    info5 = gr.Textbox(label=i18n("Output information:"), value="", max_lines=8)
-                            but7 = gr.Button(i18n("Modify"), variant="primary")        
-                            but7.click(change_info, [ckpt_path0, info_, name_to_save1], info5)
-                    with gr.Group():
-                        with gr.Accordion(label=i18n("View model information")):
-                            with gr.Row():
-                                with gr.Column():
-                                    ckpt_path1 = gr.Textbox(
-                                        label=i18n("Path to Model:"), value="", interactive=True, placeholder=i18n("Path to model")
-                                    )
-                                    
-                                    info6 = gr.Textbox(label=i18n("Output information:"), value="", max_lines=8)
-                                    but8 = gr.Button(i18n("View"), variant="primary")
-                            but8.click(show_info, [ckpt_path1], info6)
-                    with gr.Group():
-                        with gr.Accordion(label=i18n("Model extraction")):
-                            with gr.Row():
-                               with gr.Column():
-                                       save_name = gr.Textbox(
-                                        label=i18n("Name:"), value="", interactive=True, placeholder=i18n("Name for saving")
-                                    )
-                                       if_f0__ = gr.Checkbox(
-                                            label=i18n("Whether the model has pitch guidance."),
-                                            value=True,
-                                            interactive=True,
-                                        )
-                                       version_1 = gr.Radio(
-                                            label=i18n("Model architecture version:"),
-                                            choices=["v1", "v2"],
-                                            value="v2",
-                                            interactive=True,
-                                        )
-                                       sr__ = gr.Radio(
-                                            label=i18n("Target sample rate:"),
-                                            choices=["32k", "40k", "48k"],
-                                            value="40k",
-                                            interactive=True,
-                                        )
-                                   
-                               with gr.Column():    
-                                      ckpt_path2 = gr.Textbox(
-                                       
-                                        label=i18n("Path to Model:"),
-                                        placeholder=i18n("Path to model"),
-                                        interactive=True,
-                                    )
-                                      info___ = gr.Textbox(
-                                        label=i18n("Model information to be placed:"), value="", max_lines=8, interactive=True, placeholder=i18n("Model information to be placed")
-                                    )
-                                      info7 = gr.Textbox(label=i18n("Output information:"), value="", max_lines=8)   
-                    
-                            with gr.Row():
-                                    
-                                    but9 = gr.Button(i18n("Extract"), variant="primary")
-                                    ckpt_path2.change(
-                                        change_info_, [ckpt_path2], [sr__, if_f0__, version_1]
-                                    )
-                            but9.click(
-                                extract_small_model,
-                                [ckpt_path2, save_name, sr__, if_f0__, info___, version_1],
-                                info7,
-                            )
+                    processing.processing_()
+
 
                 
                             
