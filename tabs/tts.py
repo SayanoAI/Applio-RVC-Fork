@@ -149,7 +149,7 @@ def use_tts(
     if tts_voice == None:
         return
 
-    filename = os.path.join(now_dir, "audio-outputs", "converted_tts.wav")
+    filename = os.path.join(now_dir, "assets", "audios", "audio-outputs", "converted_tts.wav")
     if "SET_LIMIT" == os.getenv("DEMO"):
         if len(tts_text) > 60:
             tts_text = tts_text[:60]
@@ -177,11 +177,11 @@ def use_tts(
                 tts.save(filename)
                 print("Error: Audio will be replaced.")
 
-        os.system("cp audio-outputs/converted_tts.wav audio-outputs/real_tts.wav")
+        os.system("cp assets/audios/audio-outputs/converted_tts.wav assets/audios/audio-outputs/real_tts.wav")
 
         custom_voice(
             ["converted_tts"],  # filter indices
-            ["audio-outputs/converted_tts.wav"],  # all audio files
+            ["assets/audios/audio-outputs/converted_tts.wav"],  # all audio files
             model_voice_path=model_path,
             transpose=transpose,
             f0method=f0_method,
@@ -192,8 +192,8 @@ def use_tts(
             file_index2=index_path,
         )
         return os.path.join(
-            now_dir, "audio-outputs", "converted_tts.wav"
-        ), os.path.join(now_dir, "audio-outputs", "real_tts.wav")
+            now_dir, "assets", "audios", "audio-outputs", "converted_tts.wav"
+        ), os.path.join(now_dir, "assets", "audios", "audio-outputs", "real_tts.wav")
     elif tts_method == "Bark-tts":
         try:
             script = tts_text.replace("\n", " ").strip()
@@ -201,7 +201,7 @@ def use_tts(
             print(sentences)
             silence = np.zeros(int(0.25 * SAMPLE_RATE))
             pieces = []
-            nombre_archivo = os.path.join(now_dir, "audio-outputs", "bark_out.wav")
+            nombre_archivo = os.path.join(now_dir, "assets", "audios", "audio-outputs", "bark_out.wav")
             for sentence in sentences:
                 audio_array, _ = __bark__(sentence, tts_voice.split("-")[0])
                 pieces += [audio_array, silence.copy()]
@@ -213,10 +213,10 @@ def use_tts(
             info_, (sample_, audio_output_) = vc.vc_single_dont_save(
                 sid=0,
                 input_audio_path0=os.path.join(
-                    now_dir, "audio-outputs", "bark_out.wav"
+                    now_dir, "assets", "audios", "audio-outputs", "bark_out.wav"
                 ),  # f"audio2/{filename}",
                 input_audio_path1=os.path.join(
-                    now_dir, "audio-outputs", "bark_out.wav"
+                    now_dir, "assets", "audios", "audio-outputs", "bark_out.wav"
                 ),  # f"audio2/{filename}",
                 f0_up_key=transpose,  # transpose for m to f and reverse 0 12
                 f0_file=None,
@@ -237,12 +237,12 @@ def use_tts(
                 note_max=1100,
             )
             wavfile.write(
-                os.path.join(now_dir, "audio-outputs", "converted_bark.wav"),
+                os.path.join(now_dir, "assets", "audios", "audio-outputs", "converted_bark.wav"),
                 rate=sample_,
                 data=audio_output_,
             )
             return (
-                os.path.join(now_dir, "audio-outputs", "converted_bark.wav"),
+                os.path.join(now_dir, "assets", "audios", "audio-outputs", "converted_bark.wav"),
                 nombre_archivo,
             )
 

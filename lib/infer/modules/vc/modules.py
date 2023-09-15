@@ -284,7 +284,7 @@ class VC:
             end_time = time.time()
             total_time = end_time - start_time
 
-            output_folder = "audio-outputs"
+            output_folder = "assets/audios/audio-outputs"
             os.makedirs(output_folder, exist_ok=True)  
             output_filename = "generated_audio_{}.wav"
             output_count = 1

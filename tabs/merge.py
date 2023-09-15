@@ -17,7 +17,7 @@ import tabs.resources as resources
 
 def save_to_wav2(dropbox):
     file_path = dropbox.name
-    target_path = os.path.join("audios", os.path.basename(file_path))
+    target_path = os.path.join("assets","audios", os.path.basename(file_path))
 
     if os.path.exists(target_path):
         os.remove(target_path)
@@ -27,8 +27,8 @@ def save_to_wav2(dropbox):
     return target_path
 
 
-audio_root = "audios"
-audio_others_root = "audio-others"
+audio_root = "assets/audios"
+audio_others_root = "assets/audios/audio-others"
 sup_audioext = {
     "wav",
     "mp3",
@@ -48,25 +48,29 @@ audio_paths = [
     os.path.join(root, name)
     for root, _, files in os.walk(audio_root, topdown=False)
     for name in files
-    if name.endswith(tuple(sup_audioext))
+    if name.endswith(tuple(sup_audioext)) and root == audio_root
 ]
 
 audio_others_paths = [
     os.path.join(root, name)
     for root, _, files in os.walk(audio_others_root, topdown=False)
     for name in files
-    if name.endswith(tuple(sup_audioext))
+    if name.endswith(tuple(sup_audioext)) and root == audio_others_root
 ]
 
 
 def change_choices3():
     audio_paths = [
-        os.path.join(audio_root, file)
-        for file in os.listdir(os.path.join(now_dir, "audios"))
+    os.path.join(root, name)
+    for root, _, files in os.walk(audio_root, topdown=False)
+    for name in files
+    if name.endswith(tuple(sup_audioext)) and root == audio_root
     ]
     audio_others_paths = [
-        os.path.join(audio_others_root, file)
-        for file in os.listdir(os.path.join(now_dir, "audio-others"))
+    os.path.join(root, name)
+    for root, _, files in os.walk(audio_others_root, topdown=False)
+    for name in files
+    if name.endswith(tuple(sup_audioext)) and root == audio_others_root
     ]
 
     return (
@@ -123,7 +127,7 @@ def audio_combined(
     compressor_enabled=False,
     noise_gate_enabled=False,
 ):
-    output_folder = os.path.join(now_dir, "audio-outputs")
+    output_folder = os.path.join(now_dir,"assets", "audios", "audio-outputs")
     os.makedirs(output_folder, exist_ok=True)
 
     # Generar nombres únicos para los archivos de salida

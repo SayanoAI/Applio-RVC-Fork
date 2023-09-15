@@ -247,14 +247,14 @@ audio_paths = [
     os.path.join(root, name)
     for root, _, files in os.walk(audio_root, topdown=False)
     for name in files
-    if name.endswith(tuple(sup_audioext))
+    if name.endswith(tuple(sup_audioext)) and root == audio_root
 ]
 
 audio_others_paths = [
     os.path.join(root, name)
     for root, _, files in os.walk(audio_others_root, topdown=False)
     for name in files
-    if name.endswith(tuple(sup_audioext))
+    if name.endswith(tuple(sup_audioext)) and root == audio_others_root
 ]
 
 uvr5_names = [
@@ -271,7 +271,7 @@ for foldername in os.listdir(os.path.join(now_dir, datasets_root)):
     if "." not in foldername:
         datasets.append(
             os.path.join(
-                resources.find_folder_parent(".", "pretrained"), "datasets", foldername
+                now_dir, "datasets", foldername
             )
         )
 
@@ -298,7 +298,7 @@ def update_dataset_list(name):
         if "." not in foldername:
             new_datasets.append(
                 os.path.join(
-                    resources.find_folder_parent(".", "pretrained"),
+                    now_dir,
                     "datasets",
                     foldername,
                 )
@@ -551,8 +551,10 @@ def change_choices():
         if name.endswith(".index") and "trained" not in name
     ]
     audio_paths = [
-        os.path.join(audio_root, file)
-        for file in os.listdir(os.path.join(now_dir, "audios"))
+    os.path.join(root, name)
+    for root, _, files in os.walk(audio_root, topdown=False)
+    for name in files
+    if name.endswith(tuple(sup_audioext)) and root == audio_root
     ]
 
     return (
@@ -1294,16 +1296,16 @@ def cli_infer(com):
     if "Success." in conversion_data[0]:
         print(
             "Applio-RVC-Fork Infer-CLI: Inference succeeded. Writing to %s/%s..."
-            % ("audio-outputs", output_file_name)
+            % ("assets", "audios", "audio-outputs", output_file_name)
         )
         wavfile.write(
-            "%s/%s" % ("audio-outputs", output_file_name),
+            "%s/%s" % ("assets", "audios", "audio-outputs", output_file_name),
             conversion_data[1][0],
             conversion_data[1][1],
         )
         print(
             "Applio-RVC-Fork Infer-CLI: Finished! Saved output to %s/%s"
-            % ("audio-outputs", output_file_name)
+            % ("assets", "audios", "audio-outputs", output_file_name)
         )
     else:
         print("Applio-RVC-Fork Infer-CLI: Inference failed. Here's the traceback: ")
@@ -1692,7 +1694,7 @@ def save_to_wav(record_button):
     else:
         path_to_file = record_button
         new_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".wav"
-        new_path = "./audios/" + new_name
+        new_path = ".assets/audios/" + new_name
         shutil.move(path_to_file, new_path)
         return new_name
 
@@ -1702,7 +1704,7 @@ def save_to_wav2_edited(dropbox):
         pass
     else:
         file_path = dropbox.name
-        target_path = os.path.join("audios", os.path.basename(file_path))
+        target_path = os.path.join("assets", "audios", os.path.basename(file_path))
 
         if os.path.exists(target_path):
             os.remove(target_path)
@@ -1714,7 +1716,7 @@ def save_to_wav2_edited(dropbox):
 
 def save_to_wav2(dropbox):
     file_path = dropbox.name
-    target_path = os.path.join("audios", os.path.basename(file_path))
+    target_path = os.path.join("assets", "audios", os.path.basename(file_path))
 
     if os.path.exists(target_path):
         os.remove(target_path)
@@ -1773,7 +1775,7 @@ def GradioSetup():
                                         "Manual path to the audio file to be processed"
                                     ),
                                     value=os.path.join(
-                                        now_dir, "audios", "someguy.mp3"
+                                        now_dir, "assets", "audios", "someguy.mp3"
                                     ),
                                     visible=False,
                                 )
@@ -2209,7 +2211,7 @@ def GradioSetup():
                                     label=i18n(
                                         "Enter the path of the audio folder to be processed (copy it from the address bar of the file manager):"
                                     ),
-                                    value=os.path.join(now_dir, "audios"),
+                                    value=os.path.join(now_dir, "assets", "audios"),
                                 )
                                 inputs = gr.File(
                                     file_count="multiple",
@@ -2715,7 +2717,7 @@ def GradioSetup():
                                 label=i18n(
                                     "Enter the path of the audio folder to be processed:"
                                 ),
-                                value=os.path.join(now_dir, "audios"),
+                                value=os.path.join(now_dir, "assets", "audios"),
                             )
                             wav_inputs = gr.File(
                                 file_count="multiple",
@@ -2739,13 +2741,13 @@ def GradioSetup():
                             )
                             opt_vocal_root = gr.Textbox(
                                 label=i18n("Specify the output folder for vocals:"),
-                                value="audios",
+                                value="assets/audios",
                             )
                             opt_ins_root = gr.Textbox(
                                 label=i18n(
                                     "Specify the output folder for accompaniment:"
                                 ),
-                                value="audio-others",
+                                value="assets/audios/audio-others",
                             )
                             format0 = gr.Radio(
                                 label=i18n("Export file format:"),

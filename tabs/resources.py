@@ -64,7 +64,7 @@ os.environ["temp"] = tmp
 weight_root = os.getenv("weight_root")
 weight_uvr5_root = os.getenv("weight_uvr5_root")
 index_root = os.getenv("index_root")
-audio_root = "audios"
+audio_root = "assets/audios"
 names = [
     os.path.join(root, file)
     for root, _, files in os.walk(weight_root)
@@ -91,8 +91,9 @@ audio_paths = [
     os.path.join(root, name)
     for root, _, files in os.walk(audio_root, topdown=False)
     for name in files
-    if name.endswith(tuple(sup_audioext))
+    if name.endswith(tuple(sup_audioext)) and root == audio_root
 ]
+
 
 uvr5_names = [
     name.replace(".pth", "")
@@ -193,7 +194,7 @@ def download_from_url(url):
                 with open(os.path.join(zips_path, file_name), "wb") as newfile:
                     newfile.write(response.content)
             else:
-                os.chdir(parent_path)
+                os.chdir(now_dir)
         elif "mega.nz" in url:
             if "#!" in url:
                 file_id = url.split("#!")[1].split("!")[0]
@@ -247,14 +248,14 @@ def download_from_url(url):
                         os.makedirs(zips_path)
                     with open(os.path.join(zips_path, file_name), "wb") as newfile:
                         newfile.write(response.content)
-                        os.chdir(parent_path)
+                        os.chdir(now_dir)
                         return "downloaded"
                 else:
-                    os.chdir(parent_path)
+                    os.chdir(now_dir)
                     return None
             except Exception as e:
                 print(e)
-                os.chdir(parent_path)
+                os.chdir(now_dir)
                 return None
         else:
             os.chdir("./assets/zips")
@@ -270,7 +271,7 @@ def download_from_url(url):
                 realPath = os.path.join(currentPath, Files)
                 os.rename(realPath, nameFile + "." + extensionFile)
 
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         print(i18n("Full download"))
         return "downloaded"
     else:
@@ -382,7 +383,7 @@ def load_downloaded_model(url):
         ]
         zips_path = os.path.join(parent_path, "zips")
         unzips_path = os.path.join(parent_path, "unzips")
-        weights_path = os.path.join(parent_path, "logs/weights")
+        weights_path = os.path.join(now_dir, "logs/weights")
         logs_dir = ""
 
         if os.path.exists(zips_path):
@@ -417,7 +418,7 @@ def load_downloaded_model(url):
                 shutil.unpack_archive(zipfile_path, unzips_path, "zip")
                 model_name = os.path.basename(zipfile_path)
                 logs_dir = os.path.join(
-                    parent_path,
+                    now_dir,
                     "logs",
                     os.path.normpath(str(model_name).replace(".zip", "")),
                 )
@@ -438,7 +439,7 @@ def load_downloaded_model(url):
                 if not "G_" in item and not "D_" in item and item.endswith(".pth"):
                     model_file = True
                     model_name = item.replace(".pth", "")
-                    logs_dir = os.path.join(parent_path, "logs", model_name)
+                    logs_dir = os.path.join(now_dir, "logs", model_name)
                     if os.path.exists(logs_dir):
                         shutil.rmtree(logs_dir)
                     os.mkdir(logs_dir)
@@ -498,10 +499,10 @@ def load_downloaded_model(url):
             shutil.rmtree(zips_path)
         if os.path.exists(unzips_path):
             shutil.rmtree(unzips_path)
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         return result
     except Exception as e:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         if "too much use" in str(e):
             print(i18n("Too many users have recently viewed or downloaded this file"))
             yield i18n("Too many users have recently viewed or downloaded this file")
@@ -512,7 +513,7 @@ def load_downloaded_model(url):
             print(e)
             yield i18n("An error occurred downloading")
     finally:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
 
 
 def load_dowloaded_dataset(url):
@@ -521,7 +522,7 @@ def load_dowloaded_dataset(url):
     try:
         zips_path = os.path.join(parent_path, "zips")
         unzips_path = os.path.join(parent_path, "unzips")
-        datasets_path = os.path.join(parent_path, "datasets")
+        datasets_path = os.path.join(now_dir, "datasets")
         audio_extenions = [
             "wav",
             "mp3",
@@ -610,7 +611,7 @@ def load_dowloaded_dataset(url):
         infos.append(i18n("The Dataset has been loaded successfully."))
         yield "\n".join(infos)
     except Exception as e:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         if "too much use" in str(e):
             print(i18n("Too many users have recently viewed or downloaded this file"))
             yield i18n("Too many users have recently viewed or downloaded this file")
@@ -621,23 +622,23 @@ def load_dowloaded_dataset(url):
             print(e)
             yield i18n("An error occurred downloading")
     finally:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
 
 
 def save_model(modelname, save_action):
     parent_path = find_folder_parent(".", "pretrained_v2")
     zips_path = os.path.join(parent_path, "zips")
     dst = os.path.join(zips_path, modelname)
-    logs_path = os.path.join(parent_path, "logs", modelname)
-    weights_path = os.path.join(parent_path, "logs/weights", f"{modelname}.pth")
-    save_folder = parent_path
+    logs_path = os.path.join(now_dir, "logs", modelname)
+    weights_path = os.path.join(now_dir, "logs/weights", f"{modelname}.pth")
+    save_folder = now_dir
     infos = []
 
     try:
         if not os.path.exists(logs_path):
             raise Exception("No model found.")
 
-        if not "content" in parent_path:
+        if not "content" in now_dir:
             save_folder = os.path.join("./logs/")
         else:
             save_folder = "/content/drive/MyDrive/RVC_Backup"
@@ -740,8 +741,8 @@ def load_downloaded_backup(url):
         ]
         zips_path = os.path.join(parent_path, "zips")
         unzips_path = os.path.join(parent_path, "unzips")
-        weights_path = os.path.join(parent_path, "logs/weights")
-        logs_dir = os.path.join(parent_path, "logs")
+        weights_path = os.path.join(now_dir, "logs/weights")
+        logs_dir = os.path.join(now_dir, "logs")
 
         if os.path.exists(zips_path):
             shutil.rmtree(zips_path)
@@ -802,15 +803,15 @@ def load_downloaded_backup(url):
 
         if os.path.exists(zips_path):
             shutil.rmtree(zips_path)
-        if os.path.exists(os.path.join(parent_path, "unzips")):
-            shutil.rmtree(os.path.join(parent_path, "unzips"))
+        if os.path.exists(os.path.join(now_dir, "unzips")):
+            shutil.rmtree(os.path.join(now_dir, "unzips"))
         print(i18n("The Backup has been uploaded successfully."))
         infos.append("\n" + i18n("The Backup has been uploaded successfully."))
         yield "\n".join(infos)
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         return result
     except Exception as e:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         if "too much use" in str(e):
             print(i18n("Too many users have recently viewed or downloaded this file"))
             yield i18n("Too many users have recently viewed or downloaded this file")
@@ -821,7 +822,7 @@ def load_downloaded_backup(url):
             print(e)
             yield i18n("An error occurred downloading")
     finally:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
 
 
 def save_to_wav(record_button):
@@ -830,32 +831,18 @@ def save_to_wav(record_button):
     else:
         path_to_file = record_button
         new_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".wav"
-        new_path = "./audios/" + new_name
+        new_path = ".assets/audios/" + new_name
         shutil.move(path_to_file, new_path)
         return new_name
 
 
 def change_choices2():
-    audio_paths = []
-    for filename in os.listdir("./audios"):
-        if filename.endswith(
-            (
-                "wav",
-                "mp3",
-                "flac",
-                "ogg",
-                "opus",
-                "m4a",
-                "mp4",
-                "aac",
-                "alac",
-                "wma",
-                "aiff",
-                "webm",
-                "ac3",
-            )
-        ):
-            audio_paths.append(os.path.join("./audios", filename).replace("\\", "/"))
+    audio_paths = [
+    os.path.join(root, name)
+    for root, _, files in os.walk(audio_root, topdown=False)
+    for name in files
+    if name.endswith(tuple(sup_audioext)) and root == audio_root
+    ]
     return {"choices": sorted(audio_paths), "__type__": "update"}, {
         "__type__": "update"
     }
@@ -1121,8 +1108,8 @@ def load_downloaded_audio(url):
     parent_path = find_folder_parent(".", "pretrained_v2")
     try:
         infos = []
-        audios_path = os.path.join(parent_path, "audios")
-        zips_path = os.path.join(parent_path, "zips")
+        audios_path = os.path.join(now_dir, "assets", "audios")
+        zips_path = os.path.join(now_dir, "zips")
 
         if not os.path.exists(audios_path):
             os.mkdir(audios_path)
@@ -1154,10 +1141,10 @@ def load_downloaded_audio(url):
         infos.append(i18n("Audio files have been moved to the 'audios' folder."))
         yield "\n".join(infos)
 
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         return result
     except Exception as e:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
         if "too much use" in str(e):
             print(i18n("Too many users have recently viewed or downloaded this file"))
             yield i18n("Too many users have recently viewed or downloaded this file")
@@ -1168,7 +1155,7 @@ def load_downloaded_audio(url):
             print(e)
             yield i18n("An error occurred downloading")
     finally:
-        os.chdir(parent_path)
+        os.chdir(now_dir)
 
 
 class error_message(Exception):
@@ -1309,7 +1296,7 @@ def update_dataset_list(name):
         if "." not in foldername:
             new_datasets.append(
                 os.path.join(
-                    find_folder_parent(".", "pretrained"), "datasets", foldername
+                    now_dir, "datasets", foldername
                 )
             )
     return gr.Dropdown.update(choices=new_datasets)
@@ -1406,11 +1393,11 @@ def youtube_separator():
             with gr.Row():
                 opt_vocal_root = gr.Textbox(
                     label=i18n("Specify the output folder for vocals:"),
-                    value="audios",
+                    value="assets/audios",
                 )
             opt_ins_root = gr.Textbox(
                 label=i18n("Specify the output folder for accompaniment:"),
-                value="audio-others",
+                value="assets/audios/audio-others",
             )
             dir_wav_input = gr.Textbox(
                 label=i18n("Enter the path of the audio folder to be processed:"),
