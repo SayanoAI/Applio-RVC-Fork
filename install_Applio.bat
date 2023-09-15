@@ -149,15 +149,15 @@ curl -LJO "%URL_BASE%/hubert_base.pt"
 echo.
 cls
 cd ".."
+cd ".."
 
 echo Downloading the ffmpeg.exe and ffprobe.exe file...
-mkdir "ffmpeg"
-cd "ffmpeg"
 curl -LJO "%URL_BASE%/ffmpeg.exe"
 curl -LJO "%URL_BASE%/ffprobe.exe"
+
 echo.
 cls
-cd ".."
+cd assets
 
 echo Installing dependencies...
 
