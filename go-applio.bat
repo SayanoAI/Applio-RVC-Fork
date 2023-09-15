@@ -31,7 +31,7 @@ if "%choice%"=="1" (
     cls
     echo WARNING: At this point, it's recommended to disable antivirus or firewall, as errors might occur when downloading pretrained models.
     echo.
-    runtime\python.exe infer-web.py --pycmd runtime\python.exe --port 7897
+    python infer-web.py --pycmd python --port 7897
     pause
     cls
     goto menu
@@ -40,7 +40,7 @@ if "%choice%"=="1" (
 if "%choice%"=="2" (
     cls
     echo.
-    runtime\python.exe infer-web.py --pycmd runtime\python.exe --port 7897 --dml
+    python infer-web.py --pycmd python --port 7897 --dml
     pause
     cls
     goto menu
@@ -50,7 +50,7 @@ if "%choice%"=="3" (
     cls
     echo Starting Realtime GUI ^(DML^)...
     echo.
-    runtime\python.exe gui_v1.py --pycmd runtime\python.exe --dml
+    python tools/gui/gui_v1.py --pycmd python --dml
     pause
     cls
     goto menu
@@ -60,7 +60,7 @@ if "%choice%"=="4" (
     cls
     echo Starting Realtime GUI ^(V0^)...
     echo.
-    runtime\python.exe gui_v0.py
+    python tools/gui/gui_v0.py
     pause
     cls
     goto menu
@@ -70,7 +70,7 @@ if "%choice%"=="5" (
     cls
     echo Starting Realtime GUI ^(V1^)...
     echo.
-    runtime\python.exe gui_v1.py
+    python tools\gui\gui_v1.py
     pause
     cls
     goto menu

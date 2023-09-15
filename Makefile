@@ -9,7 +9,7 @@ install: ## Install dependencies (Do everytime you start up a paperspace machine
 	pip install --upgrade setuptools wheel
 	pip install --upgrade pip
 	pip install faiss-gpu fairseq gradio ffmpeg ffmpeg-python praat-parselmouth pyworld numpy==1.23.5 numba==0.56.4 librosa==0.9.1
-	pip install -r requirements.txt
+	pip install -r assets/requirements/requirements.txt
 	pip install --upgrade lxml
 	apt-get update
 	apt -y install -qq aria2

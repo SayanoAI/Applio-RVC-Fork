@@ -17,7 +17,7 @@ setlocal
 set "branch=applio-recode"
 set "runtime=runtime-recode"
 set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/%branch%.zip"
-set "fixesFolder=fixes"
+set "fixesFolder=lib/fixes"
 set "localFixesPy=local_fixes.py"
 set "principal=%cd%"
 set "URL_BASE=https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main"
@@ -194,17 +194,6 @@ cls
 
 echo Downloading the ffprobe.exe file...
 curl -LJO "%URL_BASE%/ffprobe.exe"
-echo.
-cls
-
-echo Downloading the runtime.zip file...
-curl -LJO "%URL_EXTRA%/%runtime%.zip"
-echo.
-cls
-
-echo Extracting the runtime.zip file, this might take a while...
-powershell -Command "Expand-Archive -Path '%runtime%.zip' -DestinationPath '.'"
-del %runtime%.zip
 echo.
 cls
 

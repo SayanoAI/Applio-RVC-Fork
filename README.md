@@ -1,7 +1,7 @@
-# 🍏 Applio-RVC-Fork
+# 🍏 Applio-RVC-Fork (V2)
 Applio is a user-friendly fork of Mangio-RVC-Fork/RVC, designed to provide an intuitive interface, especially for newcomers.
+<br>
 
-## 📎 Links
 [![Discord](https://img.shields.io/badge/SUPPORT_DISCORD-37a779?style=for-the-badge)](https://discord.gg/IAHispano)
 
 ## 📚 Table of Contents
@@ -11,8 +11,8 @@ Applio is a user-friendly fork of Mangio-RVC-Fork/RVC, designed to provide an in
   4. [Installation](#-installation)
   5. [Running the Web GUI (Inference & Train)](#-running-the-web-gui-inference--train)
   6. [Running the CLI (Inference & Train)](#-running-the-cli-inference--train)
-  7. [Credits](#credits)
-  8. [Thanks to all RVC and Mangio contributors](#thanks-to-all-rvc-and-mangio-contributors)
+  7. [Credits](#-credits)
+  8. [Thanks to all RVC, Mangio and Applio contributors](#-thanks-to-all-rvc-mangio-and-applio-contributors)
 
 
 ## 🎯 Improvements of Applio Over RVC
@@ -85,16 +85,15 @@ In addition to the aforementioned improvements, this repository offers the follo
 ### Data Efficiency
 - Supports training with a small dataset, yielding commendable results, especially with audio clips of at least 10 minutes of low-noise speech.
 
+### Universal Compatibility
+- Acceleration support for AMD/Intel graphics cards and enhanced acceleration for Intel ARC graphics cards, including IPEX compatibility.
+
 ## 🛠️ Planned Features for Future Development
 As part of the ongoing development of this fork, the following features are planned to be added:
 
 - Incorporating an inference batcher script based on user feedback. This enhancement will allow for processing 30-second audio samples at a time, improving output quality and preventing memory errors during inference.
 - Implementing an automatic removal mechanism for old generations to optimize storage space usage. This feature ensures that the repository remains efficient and organized over time.
 - Streamlining the training process for Paperspace machines to further improve efficiency and resource utilization during training tasks.
-
-## Compatibility
-- AMD/Intel graphics cards acceleration supported.
-- Intel ARC graphics cards acceleration with IPEX supported.
 
 ## ✨ Installation
 
@@ -114,7 +113,7 @@ brew install swig
 Install requirements:
 *Using pip (Python 3.9.8 is stable with this fork)*
 ```bash
-pip install -r requirements.txt
+pip install -r assets/requirements/requirements.txt
 ```
 
 ### Manual installation (Paperspace):
@@ -125,14 +124,14 @@ make install # Do this everytime you start your paperspace machine
 ### You can also use pip to install them:
 ```bash
 
-for Nvidia graphics cards
-  pip install -r requirements.txt
+for Nvidia graphics cards:
+  pip install -r assets/requirements/requirements.txt
 
-for AMD/Intel graphics cards：
-  pip install -r requirements-dml.txt
+for AMD / Intel graphics cards：
+  pip install -r assets/requirements/requirements-dml.txt
 
 for Intel ARC graphics cards on Linux / WSL using Python 3.10: 
-  pip install -r requirements-ipex.txt
+  pip install -r assets/requirements/requirements-ipex.txt
 
 ```
 
@@ -148,9 +147,9 @@ python infer-web.py --pycmd python --is_cli
 ```
 
 ```bash
-Mangio-RVC-Fork v2 CLI App!
+Applio-RVC-Fork CLI
 
-Welcome to the CLI version of RVC. Please read the documentation on https://github.com/Mangio621/Mangio-RVC-Fork (README.MD) to understand how to use this app.
+Welcome to the CLI version of RVC. Please read the documentation on README.MD to understand how to use this app.
 
 You are currently in 'HOME':
     go home            : Takes you back to home with a navigation list.
@@ -189,6 +188,7 @@ Example: mi-test.pth saudio/Sidney.wav myTest.wav logs/mi-test/added_index.index
 
 INFER: <INSERT ARGUMENTS HERE OR COPY AND PASTE THE EXAMPLE>
 ```
+
 ## 🏆 Credits
 Applio owes its existence to the collaborative efforts of various repositories, including Mangio-RVC-Fork, and all the other credited contributors. Without their contributions, Applio would not have been possible. Therefore, we kindly request that if you appreciate the work we've accomplished, you consider exploring the projects mentioned in our credits.
 
