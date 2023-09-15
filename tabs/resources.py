@@ -168,7 +168,7 @@ def download_from_url(url):
                 return None
 
             if file_id:
-                os.chdir("./zips")
+                os.chdir("./assets/zips")
                 result = subprocess.run(
                     ["gdown", f"https://drive.google.com/uc?id={file_id}", "--fuzzy"],
                     capture_output=True,
