@@ -14,10 +14,9 @@ setlocal
 :::
 :::
 
-set "branch=applio-recode"
-set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/%branch%.zip"
+set "repoUrl=https://github.com/IAHispano/Applio-RVC-Fork/archive/refs/heads/applio-recode.zip"
 set "repoFolder=Applio-RVC-Fork"
-set "fixesFolder=Fixes"
+set "fixesFolder=lib/fixes"
 set "localFixesPy=local_fixes.py"
 set "principal=%cd%\%repoFolder%"
 set "URL_BASE=https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main"
@@ -30,7 +29,6 @@ echo.
 pause
 
 cls
-echo.
 echo WARNING: Remember to install Microsoft C++ Build Tools, Redistributable, Python, and Git before continuing.
 echo.
 echo Step-by-step guide: https://rentry.org/appliolocal
@@ -45,6 +43,11 @@ cls
 for /f "delims=: tokens=*" %%A in ('findstr /b ":::" "%~f0"') do @echo(%%A
 echo.
 
+echo Creating folder for the repository...
+mkdir "%repoFolder%"
+cd "%repoFolder%"
+echo.
+
 echo Checking if Python 3.9.8 is installed
 for /f %%A in ('python -c "import sys; print(sys.version)" 2^>^&1') do (
     set "py_version=%%A"
@@ -56,14 +59,27 @@ if %errorlevel% equ 0 (
 ) else (
     echo Python 3.9.8 is not installed or not added to the path.
     echo Press Enter to continue anyway
+    echo.
     pause
+    cls
 )
 
-cls
-echo Cloning the repository...
-git clone %repoUrl% %repoFolder%
-cd %repoFolder%
+echo Downloading and extracting ZIP file...
+powershell -command "& { Invoke-WebRequest -Uri '%repoUrl%' -OutFile '%principal%\repo.zip' }"
+powershell -command "& { Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory('%principal%\repo.zip', '%principal%') }"
+
+echo Copying folder and file structure from subdirectory to main directory...
+robocopy "%principal%\Applio-RVC-Fork-applio-recode" "%principal%" /E
 echo.
+
+echo Deleting contents of subdirectory (files and folders)...
+rmdir "%principal%\Applio-RVC-Fork-applio-recode" /S /Q
+echo.
+
+echo Cleaning up...
+del "%principal%\repo.zip"
+echo.
+cls
 
 echo Proceeding to download the models...
 echo.
@@ -73,7 +89,7 @@ pause
 cls
 
 echo Downloading the "pretrained" folder...
-cd "pretrained"
+cd "assets/pretrained/"
 curl -LJO "%URL_BASE%/pretrained/D32k.pth"
 curl -LJO "%URL_BASE%/pretrained/D40k.pth"
 curl -LJO "%URL_BASE%/pretrained/D48k.pth"
@@ -121,36 +137,41 @@ echo.
 cls
 
 echo Downloading the rmvpe.pt file...
+cd "rmvpe"
 curl -LJO "%URL_BASE%/rmvpe.pt"
 echo.
 cls
+cd ".."
 
 echo Downloading the hubert_base.pt file...
+cd "hubert"
 curl -LJO "%URL_BASE%/hubert_base.pt"
 echo.
 cls
+cd ".."
 
-echo Downloading the ffmpeg.exe file...
+echo Downloading the ffmpeg.exe and ffprobe.exe file...
+mkdir "ffmpeg"
+cd "ffmpeg"
 curl -LJO "%URL_BASE%/ffmpeg.exe"
-echo.
-cls
-
-echo Downloading the ffprobe.exe file...
 curl -LJO "%URL_BASE%/ffprobe.exe"
 echo.
 cls
+cd ".."
 
 echo Installing dependencies...
 
 echo [1] Nvidia graphics cards
 echo [2] AMD / Intel graphics cards
+echo [3] I have already installed the dependencies
 echo.
 
 set /p choice=Select the option according to your GPU: 
 set choice=%choice: =%
 
 if "%choice%"=="1" (
-pip install -r assets/requirements/requirements.txt
+cls
+pip install -r requirements/requirements.txt
 echo.
 pip uninstall torch torchvision torchaudio -y
 echo.
@@ -160,21 +181,33 @@ echo.
 cls
 echo Dependencies installed!
 echo.
+goto dependenciesFinished
 )
 
 if "%choice%"=="2" (
-pip install -r assets/requirements/requirements-dml.txt
+cls
+pip install -r requirements/requirements-dml.txt
 echo.
 echo.
 cls
 echo Dependencies installed!
 echo.
+goto dependenciesFinished
 )
 
+if "%choice%"=="3" (
+echo Dependencies installed!
+echo.
+goto dependenciesFinished
+)
+
+:dependenciesFinished
+cls
+cd ".."
 echo Checking if the local_fixes.py file exists in the Fixes folder...
 if exist "%fixesFolder%\%localFixesPy%" (
     echo Running the file...
-    runtime\python.exe "%fixesFolder%\%localFixesPy%"
+    python "%fixesFolder%\%localFixesPy%"
 ) else (
     echo The "%localFixesPy%" file was not found in the "Fixes" folder.
 )
