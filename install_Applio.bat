@@ -213,10 +213,8 @@ if exist "%fixesFolder%\%localFixesPy%" (
 )
 echo.
 
-echo Fixes Applied!
-echo.
-
-echo Applio has been downloaded!
+cls 
+echo The fixes were successfully applied and Applio has been successfully downloaded, run the file go-applio.bat to run the web interface!
 echo.
 pause
 exit
