@@ -1,5 +1,5 @@
 @echo off
-title Applio
+title Applio - Manager
 
 :::
 :::                       _ _

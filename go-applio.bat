@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title Start Applio
+title Applio - Start
 
 :::
 :::                       _ _

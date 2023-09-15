@@ -1,5 +1,5 @@
 @echo off
-Title Applio Installer
+Title Applio - Installer
 setlocal
 
 :::
