@@ -1280,7 +1280,6 @@ def cli_infer(com):
     conversion_data = vc.vc_single(
         speaker_id,
         source_audio_path,
-        source_audio_path,
         transposition,
         f0_file,
         f0_method,
@@ -1770,15 +1769,6 @@ def GradioSetup():
                                     label=i18n("Or record an audio:"),
                                     type="filepath",
                                 )
-                                input_audio0 = gr.Textbox(
-                                    label=i18n(
-                                        "Manual path to the audio file to be processed"
-                                    ),
-                                    value=os.path.join(
-                                        now_dir, "assets", "audios", "someguy.mp3"
-                                    ),
-                                    visible=False,
-                                )
                                 input_audio1 = gr.Dropdown(
                                     label=i18n(
                                         "Auto detect audio path and select from the dropdown:"
@@ -1788,17 +1778,10 @@ def GradioSetup():
                                     interactive=True,
                                 )
 
-                                input_audio1.select(
-                                    fn=lambda: "", inputs=[], outputs=[input_audio0]
-                                )
-                                input_audio0.input(
-                                    fn=lambda: "", inputs=[], outputs=[input_audio1]
-                                )
-
                                 dropbox.upload(
                                     fn=save_to_wav2,
                                     inputs=[dropbox],
-                                    outputs=[input_audio0],
+                                    outputs=[],
                                 )
                                 dropbox.upload(
                                     fn=resources.change_choices2,
@@ -1808,7 +1791,7 @@ def GradioSetup():
                                 record_button.change(
                                     fn=save_to_wav,
                                     inputs=[record_button],
-                                    outputs=[input_audio0],
+                                    outputs=[],
                                 )
                                 record_button.change(
                                     fn=resources.change_choices2,
@@ -2139,7 +2122,6 @@ def GradioSetup():
                                 vc.vc_single,
                                 [
                                     spk_item,
-                                    input_audio0,
                                     input_audio1,
                                     vc_transform0,
                                     f0_file,
