@@ -86,22 +86,27 @@ shutil.rmtree(tmp, ignore_errors=True)
 os.makedirs(tmp, exist_ok=True)
 # for folder in directories:
 #    os.makedirs(os.path.join(now_dir, folder), exist_ok=True)
-B='\n'
-def D(text):A=re.compile('[^\\x00-\\x7F]+');return A.sub('',text)
-def C(lines,start_line,end_line):
-	D='\\[([^\\]]*)\\]\\([^)]*\\)';A=[]
-	for(E,C)in enumerate(lines,start=1):
-		if start_line<=E<=end_line:F=re.sub(D,'\\1',C);A.append(F)
-		else:A.append(C)
-	return B.join(A)
-with open('README.md','r',encoding='utf8')as E:A=E.read()
-F=6
-G=15
-A=C(A.split(B),F,G)
-A=D(A)
-H=191
-I=207
-inforeadme=C(A.split(B),H,I)
+def remove_invalid_chars(text):
+    pattern = re.compile(r'[^\x00-\x7F]+')
+    return pattern.sub('', text)
+def remove_text_between_parentheses(lines, start_line, end_line):
+    pattern = r'\[([^\]]*)\]\([^)]*\)'
+    processed_lines = []
+    for line_number, line in enumerate(lines, start=1):
+        if start_line <= line_number <= end_line:
+            modified_line = re.sub(pattern, r'\1', line)
+            processed_lines.append(modified_line)
+        else:
+            processed_lines.append(line)
+
+    return '\n'.join(processed_lines)
+
+with open("README.md", "r", encoding="utf8") as f:
+    inforeadme = f.read()
+
+inforeadme = remove_text_between_parentheses(inforeadme.split('\n'), 6, 15)
+inforeadme = remove_invalid_chars(inforeadme)
+inforeadme = remove_text_between_parentheses(inforeadme.split('\n'), 191, 207)
 
 os.makedirs(tmp, exist_ok=True)
 os.makedirs(os.path.join(now_dir, "logs"), exist_ok=True)
