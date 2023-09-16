@@ -99,7 +99,7 @@ F=6
 G=15
 A=C(A.split(B),F,G)
 A=D(A)
-H=197
+H=191
 I=207
 inforeadme=C(A.split(B),H,I)
 
