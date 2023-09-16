@@ -47,6 +47,8 @@ class FeatureInput(object):
         self.fs = samplerate
         self.hop = hop_size
 
+        self.f0_method_dict = self.get_f0_method_dict()
+        
         self.f0_bin = 256
         self.f0_max = 1100.0
         self.f0_min = 50.0
