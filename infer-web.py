@@ -79,12 +79,12 @@ RQuote = lambda val: SQuote(str(val))
 
 tmp = os.path.join(now_dir, "temp")
 
-#directories = ["logs", "datasets", "weights", "audio-others", "audio-outputs"]
+# directories = ["logs", "datasets", "weights", "audio-others", "audio-outputs"]
 
 shutil.rmtree(tmp, ignore_errors=True)
 
 os.makedirs(tmp, exist_ok=True)
-#for folder in directories:
+# for folder in directories:
 #    os.makedirs(os.path.join(now_dir, folder), exist_ok=True)
 
 
@@ -210,9 +210,9 @@ weight_root = os.getenv("weight_root")
 weight_uvr5_root = os.getenv("weight_uvr5_root")
 index_root = os.getenv("index_root")
 datasets_root = "datasets"
-fshift_root = "infer/lib/formantshiftcfg"
+fshift_root = "lib/infer/infer_libs/formantshiftcfg"
 audio_root = "assets/audios"
-audio_others_root = "assets/audios/audio-others" 
+audio_others_root = "assets/audios/audio-others"
 sup_audioext = {
     "wav",
     "mp3",
@@ -269,11 +269,7 @@ check_for_name = lambda: sorted(names)[0] if names else ""
 datasets = []
 for foldername in os.listdir(os.path.join(now_dir, datasets_root)):
     if "." not in foldername:
-        datasets.append(
-            os.path.join(
-                now_dir, "datasets", foldername
-            )
-        )
+        datasets.append(os.path.join(now_dir, "datasets", foldername))
 
 
 def get_dataset():
@@ -551,10 +547,10 @@ def change_choices():
         if name.endswith(".index") and "trained" not in name
     ]
     audio_paths = [
-    os.path.join(root, name)
-    for root, _, files in os.walk(audio_root, topdown=False)
-    for name in files
-    if name.endswith(tuple(sup_audioext)) and root == audio_root
+        os.path.join(root, name)
+        for root, _, files in os.walk(audio_root, topdown=False)
+        for name in files
+        if name.endswith(tuple(sup_audioext)) and root == audio_root
     ]
 
     return (
@@ -698,7 +694,7 @@ def preprocess_dataset(trainset_dir, exp_dir, sr, n_p):
     f = open("%s/logs/%s/preprocess.log" % (now_dir, exp_dir), "w")
     f.close()
     per = 3.0 if config.is_half else 3.7
-    cmd = '"%s" infer/modules/train/preprocess.py "%s" %s %s "%s/logs/%s" %s %.1f' % (
+    cmd = '"%s" lib/infer/modules/train/preprocess.py "%s" %s %s "%s/logs/%s" %s %.1f' % (
         config.python_cmd,
         trainset_dir,
         sr,
@@ -741,7 +737,7 @@ def extract_f0_feature(
     if if_f0:
         if f0method != "rmvpe_gpu":
             cmd = (
-                '"%s" infer/modules/train/extract/extract_f0_print.py "%s/logs/%s" %s %s'
+                '"%s" lib/infer/modules/train/extract/extract_f0_print.py "%s/logs/%s" %s %s'
                 % (
                     config.python_cmd,
                     now_dir,
@@ -771,7 +767,7 @@ def extract_f0_feature(
                 ps = []
                 for idx, n_g in enumerate(gpus_rmvpe):
                     cmd = (
-                        '"%s" infer/modules/train/extract/extract_f0_rmvpe.py %s %s %s "%s/logs/%s" %s '
+                        '"%s" lib/infer/modules/train/extract/extract_f0_rmvpe.py %s %s %s "%s/logs/%s" %s '
                         % (
                             config.python_cmd,
                             leng,
@@ -799,7 +795,7 @@ def extract_f0_feature(
             else:
                 cmd = (
                     config.python_cmd
-                    + ' infer/modules/train/extract/extract_f0_rmvpe_dml.py "%s/logs/%s" '
+                    + ' lib/infer/modules/train/extract/extract_f0_rmvpe_dml.py "%s/logs/%s" '
                     % (
                         now_dir,
                         exp_dir,
@@ -835,7 +831,7 @@ def extract_f0_feature(
     ps = []
     for idx, n_g in enumerate(gpus):
         cmd = (
-            '"%s" infer/modules/train/extract_feature_print.py %s %s %s %s "%s/logs/%s" %s'
+            '"%s" lib/infer/modules/train/extract_feature_print.py %s %s %s %s "%s/logs/%s" %s'
             % (
                 config.python_cmd,
                 config.device,
@@ -1061,7 +1057,7 @@ def click_train(
             f.write("\n")
     if gpus16:
         cmd = (
-            '"%s" infer/modules/train/train.py -e "%s" -sr %s -f0 %s -bs %s -g %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s'
+            '"%s" lib/infer/modules/train/train.py -e "%s" -sr %s -f0 %s -bs %s -g %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s'
             % (
                 config.python_cmd,
                 exp_dir1,
@@ -1081,7 +1077,7 @@ def click_train(
         )
     else:
         cmd = (
-            '"%s" infer/modules/train/train.py -e "%s" -sr %s -f0 %s -bs %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s'
+            '"%s" lib/infer/modules/train/train.py -e "%s" -sr %s -f0 %s -bs %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s'
             % (
                 config.python_cmd,
                 exp_dir1,
@@ -2369,11 +2365,11 @@ def GradioSetup():
                             visible=True,
                         )
                         np7 = gr.Slider(
-                            minimum=0,
+                            minimum=1,
                             maximum=config.n_cpu,
                             step=1,
                             label=i18n("Number of CPU processes:"),
-                            value=int(np.ceil(config.n_cpu / 1.5)),
+                            value=config.n_cpu,
                             interactive=True,
                         )
                 with gr.Group():
@@ -2860,14 +2856,15 @@ def GradioSetup():
 
             with gr.TabItem(i18n("Settings")):
                 with gr.Row():
-                    gr.Markdown(value=i18n("Pitch settings"))
-                    noteshertz = gr.Checkbox(
-                        label=i18n(
-                            "Whether to use note names instead of their hertz value. E.G. [C5, D6] instead of [523.25, 1174.66]Hz"
-                        ),
-                        value=rvc_globals.NotesOrHertz,
-                        interactive=True,
-                    )
+                    with gr.Column():
+                        gr.Markdown(value=i18n("Pitch settings"))
+                        noteshertz = gr.Checkbox(
+                            label=i18n(
+                                "Whether to use note names instead of their hertz value. E.G. [C5, D6] instead of [523.25, 1174.66]Hz"
+                            ),
+                            value=rvc_globals.NotesOrHertz,
+                            interactive=True,
+                        )
 
             noteshertz.change(
                 fn=lambda nhertz: rvc_globals.__setattr__("NotesOrHertz", nhertz),
@@ -2885,6 +2882,14 @@ def GradioSetup():
                     maxpitch_txtbox,
                 ],
             )
+
+            with gr.TabItem(i18n("Readme")):
+                try:
+                    with open("README.md", "r", encoding="utf8") as f:
+                        info = f.read()
+                    gr.Markdown(value=info)
+                except:
+                    gr.Markdown(traceback.format_exc())
         return app
 
 
@@ -2911,6 +2916,7 @@ def GradioRun(app):
             favicon_path="./assets/images/icon.png",
             share=share_gradio_link,
         )
+
 
 if __name__ == "__main__":
     if os.name == "nt":
