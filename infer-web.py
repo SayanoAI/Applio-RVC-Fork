@@ -86,7 +86,22 @@ shutil.rmtree(tmp, ignore_errors=True)
 os.makedirs(tmp, exist_ok=True)
 # for folder in directories:
 #    os.makedirs(os.path.join(now_dir, folder), exist_ok=True)
-
+B='\n'
+def D(text):A=re.compile('[^\\x00-\\x7F]+');return A.sub('',text)
+def C(lines,start_line,end_line):
+	D='\\[([^\\]]*)\\]\\([^)]*\\)';A=[]
+	for(E,C)in enumerate(lines,start=1):
+		if start_line<=E<=end_line:F=re.sub(D,'\\1',C);A.append(F)
+		else:A.append(C)
+	return B.join(A)
+with open('README.md','r',encoding='utf8')as E:A=E.read()
+F=6
+G=15
+A=C(A.split(B),F,G)
+A=D(A)
+H=197
+I=207
+inforeadme=C(A.split(B),H,I)
 
 os.makedirs(tmp, exist_ok=True)
 os.makedirs(os.path.join(now_dir, "logs"), exist_ok=True)
@@ -744,7 +759,6 @@ def extract_f0_feature(
                     exp_dir,
                     n_p,
                     f0method,
-                    echl,
                 )
             )
             logger.info(cmd)
@@ -2884,12 +2898,7 @@ def GradioSetup():
             )
 
             with gr.TabItem(i18n("Readme")):
-                try:
-                    with open("README.md", "r", encoding="utf8") as f:
-                        info = f.read()
-                    gr.Markdown(value=info)
-                except:
-                    gr.Markdown(traceback.format_exc())
+                gr.Markdown(value=inforeadme)
         return app
 
 
