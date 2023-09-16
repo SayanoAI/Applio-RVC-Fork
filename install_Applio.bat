@@ -37,6 +37,8 @@ echo Redistributable: https://aka.ms/vs/17/release/vc_redist.x64.exe
 echo Git: https://github.com/git-for-windows/git/releases/download/v2.42.0.windows.2/Git-2.42.0.2-64-bit.exe
 echo Python 3.9.8: https://www.python.org/ftp/python/3.9.8/python-3.9.8-amd64.exe
 echo.
+echo INFO: Its recommend installing Python 3.9.X and ensuring that it has been added to the system's path.
+echo.
 pause
 cls
 
@@ -46,22 +48,7 @@ echo.
 echo Creating folder for the repository...
 mkdir "%repoFolder%"
 cd "%repoFolder%"
-echo.
-
-echo Checking if Python 3.9.8 is installed
-for /f %%A in ('python -c "import sys; print(sys.version)" 2^>^&1') do (
-    set "py_version=%%A"
-)
-
-echo %py_version% | findstr /C:"3.9.8" >nul
-if %errorlevel% equ 0 (
-    echo Python is installed, continuing...
-) else (
-    echo INFO: Its recommend installing Python 3.9.8 (or similar) and ensuring that it has been added to the system's path.
-    echo.
-    pause
-    cls
-)
+cls
 
 echo Downloading and extracting ZIP file...
 powershell -command "& { Invoke-WebRequest -Uri '%repoUrl%' -OutFile '%principal%\repo.zip' }"
