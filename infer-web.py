@@ -2882,14 +2882,6 @@ def GradioSetup():
                     maxpitch_txtbox,
                 ],
             )
-
-            with gr.TabItem(i18n("Readme")):
-                try:
-                    with open("README.md", "r", encoding="utf8") as f:
-                        info = f.read()
-                    gr.Markdown(value=info)
-                except:
-                    gr.Markdown(traceback.format_exc())
         return app
 
 
