@@ -1739,7 +1739,7 @@ def GradioSetup():
     default_weight = names[0] if names else ""
 
     with gr.Blocks(theme="JohnSmith9982/small_and_pretty", title="Applio") as app:
-        gr.HTML("<h1> 🍏 Applio (Applio-RVC-Fork) </h1>")
+        gr.HTML("<h1> 🍏 Applio-RVC-Fork </h1>")
         with gr.Tabs():
             with gr.TabItem(i18n("Model Inference")):
                 with gr.Row():
