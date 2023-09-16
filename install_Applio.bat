@@ -24,12 +24,12 @@ set "URL_EXTRA=https://huggingface.co/IAHispano/applio/resolve/main"
 
 echo.
 cls
-echo WARNING: It's important not to run this installer as an administrator as it might cause issues.
+echo INFO: It's important not to run this installer as an administrator as it might cause issues, and it's recommended to disable antivirus or firewall, as errors might occur when downloading pretrained models.
 echo.
 pause
 
 cls
-echo WARNING: Remember to install Microsoft C++ Build Tools, Redistributable, Python, and Git before continuing.
+echo INFO: Please ensure you have installed the required dependencies before continuing. Refer to the installation guide for details.
 echo.
 echo Step-by-step guide: https://rentry.org/appliolocal
 echo Build Tools: https://aka.ms/vs/17/release/vs_BuildTools.exe
@@ -83,10 +83,6 @@ cls
 
 echo Proceeding to download the models...
 echo.
-
-echo WARNING: At this point, it's recommended to disable antivirus or firewall, as errors might occur when downloading pretrained models.
-pause
-cls
 
 echo Downloading the "pretrained" folder...
 cd "assets/pretrained/"
