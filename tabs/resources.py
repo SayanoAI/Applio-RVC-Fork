@@ -892,6 +892,7 @@ def uvr(
         print(i18n("An error occurred:"), error)
 
     actual_directory = os.path.dirname(__file__)
+    actual_directory = os.path.abspath(os.path.join(actual_directory, ".."))
 
     vocal_directory = os.path.join(actual_directory, save_root_vocal)
     instrumental_directory = os.path.join(actual_directory, save_root_ins)
@@ -1393,11 +1394,11 @@ def youtube_separator():
             with gr.Row():
                 opt_vocal_root = gr.Textbox(
                     label=i18n("Specify the output folder for vocals:"),
-                    value="assets/audios",
+                    value=((os.getcwd()).replace("\\", "/") + "/assets/audios"),
                 )
             opt_ins_root = gr.Textbox(
                 label=i18n("Specify the output folder for accompaniment:"),
-                value="assets/audios/audio-others",
+                value=((os.getcwd()).replace("\\", "/") + "/assets/audios/audio-others"),
             )
             dir_wav_input = gr.Textbox(
                 label=i18n("Enter the path of the audio folder to be processed:"),

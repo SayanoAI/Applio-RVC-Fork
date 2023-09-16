@@ -27,7 +27,7 @@ model_ids = model_ids["mdx_download_list"].values()
 model_params = requests.get(model_params).json()
 stem_naming = requests.get(stem_naming).json()
 
-os.makedirs("/lib/infer/modules/uvr5/tmp_models", exist_ok=True)
+os.makedirs("/assets/uvr5_weights/MDX", exist_ok=True)
 
 warnings.filterwarnings("ignore")
 cpu = torch.device("cpu")
@@ -44,8 +44,8 @@ def get_model_list():
 
 def id_to_ptm(mkey):
     if mkey in model_ids:
-        mpath = f"{now_dir}/tmp_models/{mkey}"
-        if not os.path.exists(f'{now_dir}/tmp_models/{mkey}'):
+        mpath = f"{now_dir}/assets/uvr5_weights/MDX/{mkey}"
+        if not os.path.exists(f'{now_dir}/assets/uvr5_weights/MDX/{mkey}'):
             print('Downloading model...',end=' ')
             subprocess.run(
                 ["wget", _Models+mkey, "-O", mpath]
@@ -55,7 +55,7 @@ def id_to_ptm(mkey):
         else:
             return mpath
     else:
-        mpath = f'models/{mkey}'
+        mpath = f'{now_dir}/assets/uvr5_weights/{mkey}'
         return mpath
 
 def prepare_mdx(onnx,custom_param=False, dim_f=None, dim_t=None, n_fft=None, stem_name=None, compensation=None):

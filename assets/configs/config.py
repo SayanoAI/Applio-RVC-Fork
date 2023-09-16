@@ -187,9 +187,9 @@ class Config:
                 + 0.4
             )
             if self.gpu_mem <= 4:
-                with open("infer/modules/train/preprocess.py", "r") as f:
+                with open("lib/infer/modules/train/preprocess.py", "r") as f:
                     strr = f.read().replace("3.7", "3.0")
-                with open("infer/modules/train/preprocess.py", "w") as f:
+                with open("lib/infer/modules/train/preprocess.py", "w") as f:
                     f.write(strr)
         elif self.has_mps():
             logger.info("No supported Nvidia GPU found")
