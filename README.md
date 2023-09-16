@@ -113,17 +113,6 @@ brew install swig
 Install requirements:
 *Using pip (Python 3.9.8 is stable with this fork)*
 ```bash
-pip install -r assets/requirements/requirements.txt
-```
-
-### Manual installation (Paperspace):
-```bash
-cd Applio-RVC-Fork
-make install # Do this everytime you start your paperspace machine
-```
-### You can also use pip to install them:
-```bash
-
 for Nvidia graphics cards:
   pip install -r assets/requirements/requirements.txt
 
@@ -132,7 +121,12 @@ for AMD / Intel graphics cards：
 
 for Intel ARC graphics cards on Linux / WSL using Python 3.10: 
   pip install -r assets/requirements/requirements-ipex.txt
+```
 
+### Manual installation (Paperspace):
+```bash
+cd Applio-RVC-Fork
+make install # Do this everytime you start your paperspace machine
 ```
 
 ## 🪄 Running the Web GUI (Inference & Train) 
