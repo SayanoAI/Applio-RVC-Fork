@@ -55,3 +55,9 @@ torchgen>=0.0.1
 tqdm==4.65.0
 python-dotenv>=1.0.0
 av
+fastapi==0.95.2
+protobuf==3.20.0
+gin
+gin_config
+flask_cors
+flask
