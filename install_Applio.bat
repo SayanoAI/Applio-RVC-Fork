@@ -55,10 +55,9 @@ for /f %%A in ('python -c "import sys; print(sys.version)" 2^>^&1') do (
 
 echo %py_version% | findstr /C:"3.9.8" >nul
 if %errorlevel% equ 0 (
-    echo Python 3.9.8 is installed, continuing...
+    echo Python is installed, continuing...
 ) else (
-    echo Python 3.9.8 is not installed or not added to the path.
-    echo Press Enter to continue anyway
+    echo INFO: Its recommend installing Python 3.9.8 (or similar) and ensuring that it has been added to the system's path.
     echo.
     pause
     cls
