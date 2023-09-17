@@ -367,7 +367,21 @@ def get_vc(sid, to_return_protect0, to_return_protect1):
         to_return_protect0,
         to_return_protect1,
     )
-
+import zipfile
+from tqdm import tqdm
+def extract_and_show_progress(zipfile_path, unzips_path):
+    try:
+        with zipfile.ZipFile(zipfile_path, 'r') as zip_ref:
+            total_files = len(zip_ref.infolist())
+            with tqdm(total=total_files, unit='files', ncols= 100, colour= 'green') as pbar:
+                for file_info in zip_ref.infolist():
+                    zip_ref.extract(file_info, unzips_path)
+                    pbar.update(1)
+        return True
+    except Exception as e:
+        print(f"Error al descomprimir {zipfile_path}: {e}")
+        return False
+    
 
 def load_downloaded_model(url):
     parent_path = find_folder_parent(".", "pretrained_v2")
@@ -415,23 +429,30 @@ def load_downloaded_model(url):
                 zipfile_path = os.path.join(zips_path, filename)
                 print(i18n("Proceeding with the extraction..."))
                 infos.append(i18n("Proceeding with the extraction..."))
-                shutil.unpack_archive(zipfile_path, unzips_path, "zip")
+                #shutil.unpack_archive(zipfile_path, unzips_path, "zip")
                 model_name = os.path.basename(zipfile_path)
                 logs_dir = os.path.join(
                     now_dir,
                     "logs",
                     os.path.normpath(str(model_name).replace(".zip", "")),
                 )
+                
+                yield "\n".join(infos)
+                success = extract_and_show_progress(zipfile_path, unzips_path)
+                if success:
+                    yield f"Extracción exitosa: {model_name}"
+                else:
+                    yield f"Fallo en la extracción: {model_name}"
                 yield "\n".join(infos)
             else:
                 print(i18n("Unzip error."))
                 infos.append(i18n("Unzip error."))
                 yield "\n".join(infos)
+                return ""
 
         index_file = False
         model_file = False
-        D_file = False
-        G_file = False
+
 
         for path, subdirs, files in os.walk(unzips_path):
             for item in files:
@@ -494,6 +515,7 @@ def load_downloaded_model(url):
             print(i18n("No relevant file was found to upload."))
             infos.append(i18n("No relevant file was found to upload."))
             yield "\n".join(infos)
+        
 
         if os.path.exists(zips_path):
             shutil.rmtree(zips_path)
@@ -625,6 +647,26 @@ def load_dowloaded_dataset(url):
         os.chdir(now_dir)
 
 
+SAVE_ACTION_CONFIG = {
+    i18n("Save all"): {
+        'destination_folder': "manual_backup",
+        'copy_files': True,  # "Save all" copia todos los archivos y carpetas
+        'include_weights': False
+    },
+    i18n("Save D and G"): {
+        'destination_folder': "manual_backup",
+        'copy_files': False,  # "Save D and G" no copia todo, solo archivos específicos
+        'files_to_copy': ["D_*.pth", "G_*.pth", "added_*.index"],
+        'include_weights': True,
+    },
+    i18n("Save voice"): {
+        'destination_folder': "Finished",
+        'copy_files': False,  # "Save voice" no copia todo, solo archivos específicos
+        'files_to_copy': ["added_*.index"],
+        'include_weights': True,
+    },
+}
+
 def save_model(modelname, save_action):
     parent_path = find_folder_parent(".", "pretrained_v2")
     zips_path = os.path.join(parent_path, "zips")
@@ -662,52 +704,62 @@ def save_model(modelname, save_action):
         g_file = glob.glob(os.path.join(logs_path, "G_*.pth"))
 
         if save_action == i18n("Choose the method"):
-            raise Exception("No method choosen.")
+            raise Exception("No method chosen.")
 
-        if save_action == i18n("Save all"):
-            print(i18n("Save all"))
-            save_folder = os.path.join(save_folder, "manual_backup")
+        # Obtener la configuración para la acción de guardado seleccionada
+        save_action_config = SAVE_ACTION_CONFIG.get(save_action)
+
+        if save_action_config is None:
+            raise Exception("Invalid save action.")
+
+        # Definir el destino y los archivos a copiar según la configuración
+        destination_folder = save_action_config['destination_folder']
+        copy_files = save_action_config['copy_files']
+        files_to_copy = save_action_config.get('files_to_copy', [])
+
+        if copy_files:
+            # Utilizar shutil.copytree para copiar todo el contenido recursivamente
             shutil.copytree(logs_path, dst)
         else:
-            if not os.path.exists(dst):
-                os.mkdir(dst)
-
-        if save_action == i18n("Save D and G"):
-            print(i18n("Save D and G"))
-            save_folder = os.path.join(save_folder, "manual_backup")
-            if len(d_file) > 0:
-                shutil.copy(d_file[0], dst)
-            if len(g_file) > 0:
-                shutil.copy(g_file[0], dst)
-
-            if len(added_file) > 0:
-                shutil.copy(added_file[0], dst)
-            else:
-                infos.append(i18n("Saved without index..."))
-
-        if save_action == i18n("Save voice"):
-            print(i18n("Save voice"))
-            save_folder = os.path.join(save_folder, "Finished")
-            if len(added_file) > 0:
-                shutil.copy(added_file[0], dst)
-            else:
-                infos.append(i18n("Saved without index..."))
+            save_folder = os.path.join(save_folder, destination_folder)
 
         yield "\n".join(infos)
-        if not os.path.exists(weights_path):
-            infos.append(i18n("Saved without inference model..."))
-        else:
-            shutil.copy(weights_path, dst)
+
+        # Manejo de archivos de pesos según la configuración
+        if save_action_config['include_weights']:
+            if not os.path.exists(weights_path):
+                infos.append(i18n("Saved without inference model..."))
+            else:
+                if copy_files:
+                    shutil.copy(weights_path, dst)
+                else:
+                    with zipfile.ZipFile(os.path.join(zips_path, f"{modelname}.zip"), 'a', zipfile.ZIP_DEFLATED) as zipf:
+                        zipf.write(weights_path, os.path.basename(weights_path))
 
         yield "\n".join(infos)
         infos.append("\n" + i18n("This may take a few minutes, please wait..."))
         yield "\n".join(infos)
 
-        shutil.make_archive(os.path.join(zips_path, f"{modelname}"), "zip", zips_path)
+        # Crear un archivo ZIP directamente en zips_path
+        with zipfile.ZipFile(os.path.join(zips_path, f"{modelname}.zip"), 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Agregar los archivos que deseas incluir en el ZIP al archivo ZIP
+            if copy_files:
+                for root, dirs, files in os.walk(dst):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        zipf.write(file_path, os.path.relpath(file_path, dst))
+            else:
+                for pattern in files_to_copy:
+                    matching_files = glob.glob(os.path.join(logs_path, pattern))
+                    for file_path in matching_files:
+                        zipf.write(file_path, os.path.basename(file_path))
+
+        # Mover el archivo ZIP creado al directorio save_folder
         shutil.move(
             os.path.join(zips_path, f"{modelname}.zip"),
             os.path.join(save_folder, f"{modelname}.zip"),
         )
+
 
         shutil.rmtree(zips_path)
         infos.append("\n" + i18n("Model saved successfully"))

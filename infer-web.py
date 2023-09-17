@@ -110,7 +110,7 @@ inforeadme = remove_text_between_parentheses(inforeadme.split('\n'), 191, 207)
 
 os.makedirs(tmp, exist_ok=True)
 os.makedirs(os.path.join(now_dir, "logs"), exist_ok=True)
-os.makedirs(os.path.join(now_dir, "assets/weights"), exist_ok=True)
+os.makedirs(os.path.join(now_dir, "logs/weights"), exist_ok=True)
 os.environ["temp"] = tmp
 warnings.filterwarnings("ignore")
 torch.manual_seed(114514)
@@ -1743,7 +1743,7 @@ def save_to_wav2(dropbox):
 def GradioSetup():
     default_weight = names[0] if names else ""
 
-    with gr.Blocks(theme="JohnSmith9982/small_and_pretty", title="Applio") as app:
+    with gr.Blocks(theme="JohnSmith9982/small_and_pretty", title="Applio-RVC-Fork") as app:
         gr.HTML("<h1> 🍏 Applio-RVC-Fork </h1>")
         with gr.Tabs():
             with gr.TabItem(i18n("Model Inference")):
