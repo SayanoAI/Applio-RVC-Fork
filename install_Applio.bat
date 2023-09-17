@@ -168,6 +168,7 @@ goto dependenciesFinished
 
 if "%choice%"=="2" (
 cls
+pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-dml.txt
 echo.
 echo.

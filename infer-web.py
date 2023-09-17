@@ -84,29 +84,34 @@ tmp = os.path.join(now_dir, "temp")
 shutil.rmtree(tmp, ignore_errors=True)
 
 os.makedirs(tmp, exist_ok=True)
+
+
 # for folder in directories:
 #    os.makedirs(os.path.join(now_dir, folder), exist_ok=True)
 def remove_invalid_chars(text):
-    pattern = re.compile(r'[^\x00-\x7F]+')
-    return pattern.sub('', text)
+    pattern = re.compile(r"[^\x00-\x7F]+")
+    return pattern.sub("", text)
+
+
 def remove_text_between_parentheses(lines, start_line, end_line):
-    pattern = r'\[([^\]]*)\]\([^)]*\)'
+    pattern = r"\[([^\]]*)\]\([^)]*\)"
     processed_lines = []
     for line_number, line in enumerate(lines, start=1):
         if start_line <= line_number <= end_line:
-            modified_line = re.sub(pattern, r'\1', line)
+            modified_line = re.sub(pattern, r"\1", line)
             processed_lines.append(modified_line)
         else:
             processed_lines.append(line)
 
-    return '\n'.join(processed_lines)
+    return "\n".join(processed_lines)
+
 
 with open("README.md", "r", encoding="utf8") as f:
     inforeadme = f.read()
 
-inforeadme = remove_text_between_parentheses(inforeadme.split('\n'), 6, 15)
+inforeadme = remove_text_between_parentheses(inforeadme.split("\n"), 6, 15)
 inforeadme = remove_invalid_chars(inforeadme)
-inforeadme = remove_text_between_parentheses(inforeadme.split('\n'), 191, 207)
+inforeadme = remove_text_between_parentheses(inforeadme.split("\n"), 191, 207)
 
 os.makedirs(tmp, exist_ok=True)
 os.makedirs(os.path.join(now_dir, "logs"), exist_ok=True)
@@ -714,15 +719,18 @@ def preprocess_dataset(trainset_dir, exp_dir, sr, n_p):
     f = open("%s/logs/%s/preprocess.log" % (now_dir, exp_dir), "w")
     f.close()
     per = 3.0 if config.is_half else 3.7
-    cmd = '"%s" lib/infer/modules/train/preprocess.py "%s" %s %s "%s/logs/%s" %s %.1f' % (
-        config.python_cmd,
-        trainset_dir,
-        sr,
-        n_p,
-        now_dir,
-        exp_dir,
-        config.noparallel,
-        per,
+    cmd = (
+        '"%s" lib/infer/modules/train/preprocess.py "%s" %s %s "%s/logs/%s" %s %.1f'
+        % (
+            config.python_cmd,
+            trainset_dir,
+            sr,
+            n_p,
+            now_dir,
+            exp_dir,
+            config.noparallel,
+            per,
+        )
     )
     logger.info(cmd)
     p = Popen(cmd, shell=True)  # , stdin=PIPE, stdout=PIPE,stderr=PIPE,cwd=now_dir
@@ -1743,7 +1751,9 @@ def save_to_wav2(dropbox):
 def GradioSetup():
     default_weight = names[0] if names else ""
 
-    with gr.Blocks(theme="JohnSmith9982/small_and_pretty", title="Applio-RVC-Fork") as app:
+    with gr.Blocks(
+        theme="JohnSmith9982/small_and_pretty", title="Applio-RVC-Fork"
+    ) as app:
         gr.HTML("<h1> 🍏 Applio-RVC-Fork </h1>")
         with gr.Tabs():
             with gr.TabItem(i18n("Model Inference")):
@@ -1784,14 +1794,37 @@ def GradioSetup():
                                     label=i18n("Or record an audio:"),
                                     type="filepath",
                                 )
-                                input_audio1 = gr.Dropdown(
+
+                            best_match_index_path1, _ = match_index(
+                                sid0.value
+                            )  # Get initial index from default sid0 (first voice model in list)
+
+                            with gr.Column():  # Second column for pitch shift and other options
+                                file_index2 = gr.Dropdown(
                                     label=i18n(
-                                        "Auto detect audio path and select from the dropdown:"
+                                        "Auto-detect index path and select from the dropdown:"
                                     ),
-                                    choices=sorted(audio_paths),
-                                    value="",
+                                    choices=get_indexes(),
+                                    value=best_match_index_path1,
                                     interactive=True,
+                                    allow_custom_value=True,
                                 )
+
+                                with gr.Column():
+                                    input_audio1 = gr.Dropdown(
+                                        label=i18n(
+                                            "Auto detect audio path and select from the dropdown:"
+                                        ),
+                                        choices=sorted(audio_paths),
+                                        value="",
+                                        interactive=True,
+                                    )
+                                    vc_transform0 = gr.Number(
+                                        label=i18n(
+                                            "Transpose (integer, number of semitones, raise by an octave: 12, lower by an octave: -12):"
+                                        ),
+                                        value=0,
+                                    )
 
                                 dropbox.upload(
                                     fn=save_to_wav2,
@@ -1813,41 +1846,11 @@ def GradioSetup():
                                     inputs=[],
                                     outputs=[input_audio1],
                                 )
-
-                            best_match_index_path1, _ = match_index(
-                                sid0.value
-                            )  # Get initial index from default sid0 (first voice model in list)
-
-                            with gr.Column():  # Second column for pitch shift and other options
-                                file_index2 = gr.Dropdown(
-                                    label=i18n(
-                                        "Auto-detect index path and select from the dropdown:"
-                                    ),
-                                    choices=get_indexes(),
-                                    value=best_match_index_path1,
-                                    interactive=True,
-                                    allow_custom_value=True,
-                                )
-                                index_rate1 = gr.Slider(
-                                    minimum=0,
-                                    maximum=1,
-                                    label=i18n("Search feature ratio:"),
-                                    value=0.75,
-                                    interactive=True,
-                                )
                                 refresh_button.click(
                                     fn=change_choices,
                                     inputs=[],
                                     outputs=[sid0, file_index2, input_audio1],
                                 )
-                                with gr.Column():
-                                    vc_transform0 = gr.Number(
-                                        label=i18n(
-                                            "Transpose (integer, number of semitones, raise by an octave: 12, lower by an octave: -12):"
-                                        ),
-                                        value=0,
-                                    )
-
                     # Create a checkbox for advanced settings
                     advanced_settings_checkbox = gr.Checkbox(
                         value=False,
@@ -1952,22 +1955,17 @@ def GradioSetup():
                                     interactive=True,
                                 )
 
-                            with gr.Column():
                                 file_index1 = gr.Textbox(
                                     label=i18n("Feature search database file path:"),
                                     value="",
                                     interactive=True,
                                 )
 
-                                with gr.Accordion(
-                                    label=i18n("Custom f0 [Root pitch] File"),
-                                    open=False,
-                                ):
-                                    f0_file = gr.File(
-                                        label=i18n(
-                                            "F0 curve file (optional). One pitch per line. Replaces the default F0 and pitch modulation:"
-                                        )
+                                f0_file = gr.File(
+                                    label=i18n(
+                                        "F0 curve file (optional). One pitch per line. Replaces the default F0 and pitch modulation:"
                                     )
+                                )
 
                             f0method0.change(
                                 fn=lambda radio: (
@@ -2020,6 +2018,13 @@ def GradioSetup():
                                     ),
                                     value=0.33,
                                     step=0.01,
+                                    interactive=True,
+                                )
+                                index_rate1 = gr.Slider(
+                                    minimum=0,
+                                    maximum=1,
+                                    label=i18n("Search feature ratio:"),
+                                    value=0.75,
                                     interactive=True,
                                 )
                                 formanting = gr.Checkbox(
@@ -2160,11 +2165,6 @@ def GradioSetup():
 
                 with gr.TabItem(i18n("Batch")):  # Dont Change
                     with gr.Group():  # Markdown explanation of batch inference
-                        gr.Markdown(
-                            value=i18n(
-                                "Batch conversion. Enter the folder containing the audio files to be converted or upload multiple audio files. The converted audio will be output in the specified folder (default: 'opt')."
-                            )
-                        )
                         with gr.Row():
                             with gr.Column():
                                 vc_transform1 = gr.Number(
@@ -2185,6 +2185,12 @@ def GradioSetup():
                                     value=best_match_index_path1,
                                     interactive=True,
                                 )
+                                dir_input = gr.Textbox(
+                                    label=i18n(
+                                        "Enter the path of the audio folder to be processed (copy it from the address bar of the file manager):"
+                                    ),
+                                    value=os.path.join(now_dir, "assets", "audios"),
+                                )
                                 sid0.select(
                                     fn=match_index,
                                     inputs=[sid0],
@@ -2196,27 +2202,15 @@ def GradioSetup():
                                     inputs=[],
                                     outputs=file_index4,
                                 )
-                                index_rate2 = gr.Slider(
-                                    minimum=0,
-                                    maximum=1,
-                                    label=i18n("Search feature ratio:"),
-                                    value=0.75,
-                                    interactive=True,
-                                )
-                            with gr.Row():
-                                dir_input = gr.Textbox(
-                                    label=i18n(
-                                        "Enter the path of the audio folder to be processed (copy it from the address bar of the file manager):"
-                                    ),
-                                    value=os.path.join(now_dir, "assets", "audios"),
-                                )
+
+                            with gr.Column():
                                 inputs = gr.File(
                                     file_count="multiple",
                                     label=i18n(
                                         "You can also input audio files in batches. Choose one of the two options. Priority is given to reading from the folder."
                                     ),
                                 )
-
+                    with gr.Group():
                         with gr.Row():
                             with gr.Column():
                                 # Create a checkbox for advanced batch settings
@@ -2242,35 +2236,34 @@ def GradioSetup():
                                                 interactive=True,
                                             )
 
-                                    f0method1 = gr.Radio(
-                                        label=i18n(
-                                            "Select the pitch extraction algorithm:"
-                                        ),
-                                        choices=["pm", "harvest", "crepe", "rmvpe"],
-                                        value="rmvpe",
-                                        interactive=True,
-                                    )
-                                    f0_autotune = gr.Checkbox(
-                                        label="Enable autotune", interactive=True
-                                    )
-                                    filter_radius1 = gr.Slider(
-                                        minimum=0,
-                                        maximum=7,
-                                        label=i18n(
-                                            "If >=3: apply median filtering to the harvested pitch results. The value represents the filter radius and can reduce breathiness."
-                                        ),
-                                        value=3,
-                                        step=1,
-                                        interactive=True,
-                                    )
+                                            f0_autotune = gr.Checkbox(
+                                                label="Enable autotune",
+                                                interactive=True,
+                                            )
+                                            f0method1 = gr.Radio(
+                                                label=i18n(
+                                                    "Select the pitch extraction algorithm:"
+                                                ),
+                                                choices=[
+                                                    "pm",
+                                                    "harvest",
+                                                    "dio",
+                                                    "crepe",
+                                                    "crepe-tiny",
+                                                    "mangio-crepe",
+                                                    "mangio-crepe-tiny",
+                                                    "rmvpe",
+                                                ],
+                                                value="rmvpe",
+                                                interactive=True,
+                                            )
 
-                                    with gr.Row():
-                                        format1 = gr.Radio(
-                                            label=i18n("Export file format"),
-                                            choices=["wav", "flac", "mp3", "m4a"],
-                                            value="wav",
-                                            interactive=True,
-                                        )
+                                            format1 = gr.Radio(
+                                                label=i18n("Export file format:"),
+                                                choices=["wav", "flac", "mp3", "m4a"],
+                                                value="wav",
+                                                interactive=True,
+                                            )
 
                                     with gr.Column():
                                         resample_sr1 = gr.Slider(
@@ -2302,10 +2295,43 @@ def GradioSetup():
                                             step=0.01,
                                             interactive=True,
                                         )
+                                        filter_radius1 = gr.Slider(
+                                            minimum=0,
+                                            maximum=7,
+                                            label=i18n(
+                                                "If >=3: apply median filtering to the harvested pitch results. The value represents the filter radius and can reduce breathiness."
+                                            ),
+                                            value=3,
+                                            step=1,
+                                            interactive=True,
+                                        )
+
+                                        index_rate2 = gr.Slider(
+                                            minimum=0,
+                                            maximum=1,
+                                            label=i18n("Search feature ratio:"),
+                                            value=0.75,
+                                            interactive=True,
+                                        )
+                                        f0_autotune = gr.Checkbox(
+                                            label="Enable autotune", interactive=True
+                                        )
+                                        crepe_hop_length = gr.Slider(
+                                            minimum=1,
+                                            maximum=512,
+                                            step=1,
+                                            label=i18n(
+                                                "Mangio-Crepe Hop Length (Only applies to mangio-crepe): Hop length refers to the time it takes for the speaker to jump to a dramatic pitch. Lower hop lengths take more time to infer but are more pitch accurate."
+                                            ),
+                                            value=120,
+                                            interactive=True,
+                                            visible=False,
+                                        )
+
+                                but1 = gr.Button(i18n("Convert"), variant="primary")
                                 vc_output3 = gr.Textbox(
                                     label=i18n("Output information:")
                                 )
-                                but1 = gr.Button(i18n("Convert"), variant="primary")
                                 but1.click(
                                     vc.vc_multi,
                                     [
